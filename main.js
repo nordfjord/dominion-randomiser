@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 4);
+/******/ 	return __webpack_require__(__webpack_require__.s = 6);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -199,14 +199,456 @@ module.exports = function _curry1(fn) {
 "use strict";
 
 
+/*
+	MIT License http://www.opensource.org/licenses/mit-license.php
+	Author Tobias Koppers @sokra
+*/
+// css base code, injected by the css-loader
+module.exports = function (useSourceMap) {
+	var list = [];
+
+	// return the list of modules as css string
+	list.toString = function toString() {
+		return this.map(function (item) {
+			var content = cssWithMappingToString(item, useSourceMap);
+			if (item[2]) {
+				return "@media " + item[2] + "{" + content + "}";
+			} else {
+				return content;
+			}
+		}).join("");
+	};
+
+	// import a list of modules into the list
+	list.i = function (modules, mediaQuery) {
+		if (typeof modules === "string") modules = [[null, modules, ""]];
+		var alreadyImportedModules = {};
+		for (var i = 0; i < this.length; i++) {
+			var id = this[i][0];
+			if (typeof id === "number") alreadyImportedModules[id] = true;
+		}
+		for (i = 0; i < modules.length; i++) {
+			var item = modules[i];
+			// skip already imported module
+			// this implementation is not 100% perfect for weird media query combinations
+			//  when a module is imported multiple times with different media queries.
+			//  I hope this will never occur (Hey this way we have smaller bundles)
+			if (typeof item[0] !== "number" || !alreadyImportedModules[item[0]]) {
+				if (mediaQuery && !item[2]) {
+					item[2] = mediaQuery;
+				} else if (mediaQuery) {
+					item[2] = "(" + item[2] + ") and (" + mediaQuery + ")";
+				}
+				list.push(item);
+			}
+		}
+	};
+	return list;
+};
+
+function cssWithMappingToString(item, useSourceMap) {
+	var content = item[1] || '';
+	var cssMapping = item[3];
+	if (!cssMapping) {
+		return content;
+	}
+
+	if (useSourceMap && typeof btoa === 'function') {
+		var sourceMapping = toComment(cssMapping);
+		var sourceURLs = cssMapping.sources.map(function (source) {
+			return '/*# sourceURL=' + cssMapping.sourceRoot + source + ' */';
+		});
+
+		return [content].concat(sourceURLs).concat([sourceMapping]).join('\n');
+	}
+
+	return [content].join('\n');
+}
+
+// Adapted from convert-source-map (MIT)
+function toComment(sourceMap) {
+	// eslint-disable-next-line no-undef
+	var base64 = btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap))));
+	var data = 'sourceMappingURL=data:application/json;charset=utf-8;base64,' + base64;
+
+	return '/*# ' + data + ' */';
+}
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/*
+	MIT License http://www.opensource.org/licenses/mit-license.php
+	Author Tobias Koppers @sokra
+*/
+
+var stylesInDom = {};
+
+var	memoize = function (fn) {
+	var memo;
+
+	return function () {
+		if (typeof memo === "undefined") memo = fn.apply(this, arguments);
+		return memo;
+	};
+};
+
+var isOldIE = memoize(function () {
+	// Test for IE <= 9 as proposed by Browserhacks
+	// @see http://browserhacks.com/#hack-e71d8692f65334173fee715c222cb805
+	// Tests for existence of standard globals is to allow style-loader
+	// to operate correctly into non-standard environments
+	// @see https://github.com/webpack-contrib/style-loader/issues/177
+	return window && document && document.all && !window.atob;
+});
+
+var getElement = (function (fn) {
+	var memo = {};
+
+	return function(selector) {
+		if (typeof memo[selector] === "undefined") {
+			memo[selector] = fn.call(this, selector);
+		}
+
+		return memo[selector]
+	};
+})(function (target) {
+	return document.querySelector(target)
+});
+
+var singleton = null;
+var	singletonCounter = 0;
+var	stylesInsertedAtTop = [];
+
+var	fixUrls = __webpack_require__(17);
+
+module.exports = function(list, options) {
+	if (typeof DEBUG !== "undefined" && DEBUG) {
+		if (typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
+	}
+
+	options = options || {};
+
+	options.attrs = typeof options.attrs === "object" ? options.attrs : {};
+
+	// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
+	// tags it will allow on a page
+	if (!options.singleton) options.singleton = isOldIE();
+
+	// By default, add <style> tags to the <head> element
+	if (!options.insertInto) options.insertInto = "head";
+
+	// By default, add <style> tags to the bottom of the target
+	if (!options.insertAt) options.insertAt = "bottom";
+
+	var styles = listToStyles(list, options);
+
+	addStylesToDom(styles, options);
+
+	return function update (newList) {
+		var mayRemove = [];
+
+		for (var i = 0; i < styles.length; i++) {
+			var item = styles[i];
+			var domStyle = stylesInDom[item.id];
+
+			domStyle.refs--;
+			mayRemove.push(domStyle);
+		}
+
+		if(newList) {
+			var newStyles = listToStyles(newList, options);
+			addStylesToDom(newStyles, options);
+		}
+
+		for (var i = 0; i < mayRemove.length; i++) {
+			var domStyle = mayRemove[i];
+
+			if(domStyle.refs === 0) {
+				for (var j = 0; j < domStyle.parts.length; j++) domStyle.parts[j]();
+
+				delete stylesInDom[domStyle.id];
+			}
+		}
+	};
+};
+
+function addStylesToDom (styles, options) {
+	for (var i = 0; i < styles.length; i++) {
+		var item = styles[i];
+		var domStyle = stylesInDom[item.id];
+
+		if(domStyle) {
+			domStyle.refs++;
+
+			for(var j = 0; j < domStyle.parts.length; j++) {
+				domStyle.parts[j](item.parts[j]);
+			}
+
+			for(; j < item.parts.length; j++) {
+				domStyle.parts.push(addStyle(item.parts[j], options));
+			}
+		} else {
+			var parts = [];
+
+			for(var j = 0; j < item.parts.length; j++) {
+				parts.push(addStyle(item.parts[j], options));
+			}
+
+			stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
+		}
+	}
+}
+
+function listToStyles (list, options) {
+	var styles = [];
+	var newStyles = {};
+
+	for (var i = 0; i < list.length; i++) {
+		var item = list[i];
+		var id = options.base ? item[0] + options.base : item[0];
+		var css = item[1];
+		var media = item[2];
+		var sourceMap = item[3];
+		var part = {css: css, media: media, sourceMap: sourceMap};
+
+		if(!newStyles[id]) styles.push(newStyles[id] = {id: id, parts: [part]});
+		else newStyles[id].parts.push(part);
+	}
+
+	return styles;
+}
+
+function insertStyleElement (options, style) {
+	var target = getElement(options.insertInto)
+
+	if (!target) {
+		throw new Error("Couldn't find a style target. This probably means that the value for the 'insertInto' parameter is invalid.");
+	}
+
+	var lastStyleElementInsertedAtTop = stylesInsertedAtTop[stylesInsertedAtTop.length - 1];
+
+	if (options.insertAt === "top") {
+		if (!lastStyleElementInsertedAtTop) {
+			target.insertBefore(style, target.firstChild);
+		} else if (lastStyleElementInsertedAtTop.nextSibling) {
+			target.insertBefore(style, lastStyleElementInsertedAtTop.nextSibling);
+		} else {
+			target.appendChild(style);
+		}
+		stylesInsertedAtTop.push(style);
+	} else if (options.insertAt === "bottom") {
+		target.appendChild(style);
+	} else {
+		throw new Error("Invalid value for parameter 'insertAt'. Must be 'top' or 'bottom'.");
+	}
+}
+
+function removeStyleElement (style) {
+	if (style.parentNode === null) return false;
+	style.parentNode.removeChild(style);
+
+	var idx = stylesInsertedAtTop.indexOf(style);
+	if(idx >= 0) {
+		stylesInsertedAtTop.splice(idx, 1);
+	}
+}
+
+function createStyleElement (options) {
+	var style = document.createElement("style");
+
+	options.attrs.type = "text/css";
+
+	addAttrs(style, options.attrs);
+	insertStyleElement(options, style);
+
+	return style;
+}
+
+function createLinkElement (options) {
+	var link = document.createElement("link");
+
+	options.attrs.type = "text/css";
+	options.attrs.rel = "stylesheet";
+
+	addAttrs(link, options.attrs);
+	insertStyleElement(options, link);
+
+	return link;
+}
+
+function addAttrs (el, attrs) {
+	Object.keys(attrs).forEach(function (key) {
+		el.setAttribute(key, attrs[key]);
+	});
+}
+
+function addStyle (obj, options) {
+	var style, update, remove, result;
+
+	// If a transform function was defined, run it on the css
+	if (options.transform && obj.css) {
+	    result = options.transform(obj.css);
+
+	    if (result) {
+	    	// If transform returns a value, use that instead of the original css.
+	    	// This allows running runtime transformations on the css.
+	    	obj.css = result;
+	    } else {
+	    	// If the transform function returns a falsy value, don't add this css.
+	    	// This allows conditional loading of css
+	    	return function() {
+	    		// noop
+	    	};
+	    }
+	}
+
+	if (options.singleton) {
+		var styleIndex = singletonCounter++;
+
+		style = singleton || (singleton = createStyleElement(options));
+
+		update = applyToSingletonTag.bind(null, style, styleIndex, false);
+		remove = applyToSingletonTag.bind(null, style, styleIndex, true);
+
+	} else if (
+		obj.sourceMap &&
+		typeof URL === "function" &&
+		typeof URL.createObjectURL === "function" &&
+		typeof URL.revokeObjectURL === "function" &&
+		typeof Blob === "function" &&
+		typeof btoa === "function"
+	) {
+		style = createLinkElement(options);
+		update = updateLink.bind(null, style, options);
+		remove = function () {
+			removeStyleElement(style);
+
+			if(style.href) URL.revokeObjectURL(style.href);
+		};
+	} else {
+		style = createStyleElement(options);
+		update = applyToTag.bind(null, style);
+		remove = function () {
+			removeStyleElement(style);
+		};
+	}
+
+	update(obj);
+
+	return function updateStyle (newObj) {
+		if (newObj) {
+			if (
+				newObj.css === obj.css &&
+				newObj.media === obj.media &&
+				newObj.sourceMap === obj.sourceMap
+			) {
+				return;
+			}
+
+			update(obj = newObj);
+		} else {
+			remove();
+		}
+	};
+}
+
+var replaceText = (function () {
+	var textStore = [];
+
+	return function (index, replacement) {
+		textStore[index] = replacement;
+
+		return textStore.filter(Boolean).join('\n');
+	};
+})();
+
+function applyToSingletonTag (style, index, remove, obj) {
+	var css = remove ? "" : obj.css;
+
+	if (style.styleSheet) {
+		style.styleSheet.cssText = replaceText(index, css);
+	} else {
+		var cssNode = document.createTextNode(css);
+		var childNodes = style.childNodes;
+
+		if (childNodes[index]) style.removeChild(childNodes[index]);
+
+		if (childNodes.length) {
+			style.insertBefore(cssNode, childNodes[index]);
+		} else {
+			style.appendChild(cssNode);
+		}
+	}
+}
+
+function applyToTag (style, obj) {
+	var css = obj.css;
+	var media = obj.media;
+
+	if(media) {
+		style.setAttribute("media", media)
+	}
+
+	if(style.styleSheet) {
+		style.styleSheet.cssText = css;
+	} else {
+		while(style.firstChild) {
+			style.removeChild(style.firstChild);
+		}
+
+		style.appendChild(document.createTextNode(css));
+	}
+}
+
+function updateLink (link, options, obj) {
+	var css = obj.css;
+	var sourceMap = obj.sourceMap;
+
+	/*
+		If convertToAbsoluteUrls isn't defined, but sourcemaps are enabled
+		and there is no publicPath defined then lets turn convertToAbsoluteUrls
+		on by default.  Otherwise default to the convertToAbsoluteUrls option
+		directly
+	*/
+	var autoFixUrls = options.convertToAbsoluteUrls === undefined && sourceMap;
+
+	if (options.convertToAbsoluteUrls || autoFixUrls) {
+		css = fixUrls(css);
+	}
+
+	if (sourceMap) {
+		// http://stackoverflow.com/a/26603875
+		css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
+	}
+
+	var blob = new Blob([css], { type: "text/css" });
+
+	var oldSrc = link.href;
+
+	link.href = URL.createObjectURL(blob);
+
+	if(oldSrc) URL.revokeObjectURL(oldSrc);
+}
+
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-var m = __webpack_require__(5);
-var f = __webpack_require__(9);
+var m = __webpack_require__(7);
+var f = __webpack_require__(11);
 
-__webpack_require__(13);
+__webpack_require__(15);
+__webpack_require__(18);
 
-var cards = __webpack_require__(18);
+var cards = __webpack_require__(20);
 
 var expansions = [].concat(_toConsumableArray(new Set(cards.map(function (d) {
   return d.set;
@@ -244,9 +686,7 @@ var selected_cards = filtered_cards.map(function (cards) {
   return gen_random_indexes(10, 0, cards.length).map(function (idx) {
     return cards[idx];
   }).sort(function (a, b) {
-    var a_set_index = expansions.indexOf(a.set);
-    var b_set_index = expansions.indexOf(b.set);
-    return a_set_index - b_set_index;
+    return a.cost - b.cost;
   });
 });
 
@@ -257,7 +697,7 @@ var MainFilters = {
 
 var Filters = {
   view: function view() {
-    return m('.flex.items-center.justify-center', [expansions.map(function (set) {
+    return m('.flex.items-center.justify-center.flex-wrap', [expansions.map(function (set) {
       return m('', m('label', [set, m('input[type=checkbox]', {
         checked: !!~filtered_expansions().indexOf(set),
         onchange: m.withAttr('checked', function (checked) {
@@ -276,8 +716,11 @@ var Filters = {
 
 var Cards = {
   view: function view() {
-    return m('.flex.items-center.justify-center', m('.overflow-scroll', m('table.table-light', [m('thead', m('tr', [m('th', 'Card'), m('th', 'Set'), m('th', 'Type')])), m('tbody', selected_cards().map(function (card) {
-      return card && m('tr.card-row.' + card.type.join('.'), [m('td', card.name), m('td', card.set), m('td', card.type.join(', '))]);
+    return m('.flex.items-center.justify-center', m('.overflow-scroll.fit', m('table.table-light', [m('thead', m('tr.border-bottom', [m('th.p1', 'Card'), m('th.p1', 'Set'), m('th.p1.cost', 'Cost')])), m('tbody', selected_cards().map(function (card) {
+      return card && m('tr.card-row.' + card.type.join('.'), [m('td.p1.name', card.name), m('td.p1.set', card.set), m('td.p1.cost', card.cost)]
+      // m('td.p1', card.type.join(', ')),
+      // m('td.p1', m.trust(card.description)),
+      );
     }))])));
   }
 };
@@ -291,7 +734,7 @@ var main = {
 m.mount(document.body, main);
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1546,10 +1989,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 	m.vnode = Vnode;
 	if (true) module["exports"] = m;else window.m = m;
 })();
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(6).setImmediate, __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8).setImmediate, __webpack_require__(1)))
 
 /***/ }),
-/* 6 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1603,12 +2046,12 @@ exports._unrefActive = exports.active = function (item) {
 };
 
 // setimmediate attaches itself to the global object
-__webpack_require__(7);
+__webpack_require__(9);
 exports.setImmediate = setImmediate;
 exports.clearImmediate = clearImmediate;
 
 /***/ }),
-/* 7 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1796,10 +2239,10 @@ exports.clearImmediate = clearImmediate;
     attachTo.setImmediate = setImmediate;
     attachTo.clearImmediate = clearImmediate;
 })(typeof self === "undefined" ? typeof global === "undefined" ? undefined : global : self);
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1), __webpack_require__(8)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1), __webpack_require__(10)))
 
 /***/ }),
-/* 8 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1992,13 +2435,13 @@ process.umask = function () {
 };
 
 /***/ }),
-/* 9 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var curryN = __webpack_require__(10);
+var curryN = __webpack_require__(12);
 
 // Utility
 function isFunction(obj) {
@@ -2638,7 +3081,7 @@ StreamTransformer.prototype['@@transducer/step'] = function (s, v) {
 module.exports = flyd;
 
 /***/ }),
-/* 10 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2646,8 +3089,8 @@ module.exports = flyd;
 
 var _arity = __webpack_require__(2);
 var _curry1 = __webpack_require__(3);
-var _curry2 = __webpack_require__(11);
-var _curryN = __webpack_require__(12);
+var _curry2 = __webpack_require__(13);
+var _curryN = __webpack_require__(14);
 
 /**
  * Returns a curried equivalent of the provided function, with the specified
@@ -2699,7 +3142,7 @@ module.exports = _curry2(function curryN(length, fn) {
 });
 
 /***/ }),
-/* 11 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2736,7 +3179,7 @@ module.exports = function _curry2(fn) {
 };
 
 /***/ }),
-/* 12 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2780,13 +3223,13 @@ module.exports = function _curryN(length, received, fn) {
 };
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(14);
+var content = __webpack_require__(16);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -2794,7 +3237,7 @@ var transform;
 var options = {}
 options.transform = transform
 // add the styles to the DOM
-var update = __webpack_require__(16)(content, options);
+var update = __webpack_require__(5)(content, options);
 if(content.locals) module.exports = content.locals;
 // Hot Module Replacement
 if(false) {
@@ -2811,10 +3254,10 @@ if(false) {
 }
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(15)(undefined);
+exports = module.exports = __webpack_require__(4)(undefined);
 // imports
 
 
@@ -2822,447 +3265,6 @@ exports = module.exports = __webpack_require__(15)(undefined);
 exports.push([module.i, "/*! ace.css | https://github.com/basscss/ace | MIT License */*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Helvetica,sans-serif;line-height:1.5;margin:0;color:#111;background-color:#fff}img{max-width:100%;height:auto}svg{max-height:100%}a{color:#07c}h1,h2,h3,h4,h5,h6{font-weight:600;line-height:1.25;margin-top:1em;margin-bottom:.5em}h1{font-size:2rem}h2{font-size:1.5rem}h3{font-size:1.25rem}h4{font-size:1rem}h5{font-size:.875rem}h6{font-size:.75rem}blockquote,dl,ol,p,pre,ul{margin-top:1em;margin-bottom:1em}code,pre,samp{font-family:Roboto Mono,Source Code Pro,Menlo,Consolas,Liberation Mono,monospace}code,samp{padding:.125em}code,pre,samp{font-size:87.5%}pre{overflow:scroll}blockquote{font-size:1.25rem;font-style:italic;margin-left:0}hr{margin-top:1.5em;margin-bottom:1.5em;border:0;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#ccc}.label{font-size:.875rem;font-weight:700;display:block;margin-bottom:.5rem}.input,.select{height:2.5rem}.input,.select,.textarea{font-family:inherit;font-size:inherit;display:block;width:100%;padding:.5rem;margin-bottom:1rem;border:1px solid #ccc;border-radius:3px;box-sizing:border-box}.input-range{vertical-align:middle;padding-top:.5rem;padding-bottom:.5rem;color:inherit;background-color:transparent;-webkit-appearance:none}.input-range::-webkit-slider-thumb{position:relative;width:.5rem;height:1.25rem;cursor:pointer;margin-top:-.5rem;border-radius:3px;background-color:currentcolor;-webkit-appearance:none}.input-range::-webkit-slider-thumb:before{content:'';display:block;position:absolute;top:-.5rem;left:-.875rem;width:2.25rem;height:2.25rem;opacity:0}.input-range::-moz-range-thumb{width:.5rem;height:1.25rem;cursor:pointer;border-radius:3px;border-color:transparent;border-width:0;background-color:currentcolor}.input-range::-webkit-slider-runnable-track{height:.25rem;cursor:pointer;border-radius:3px;background-color:rgba(0,0,0,.25)}.input-range::-moz-range-track{height:.25rem;cursor:pointer;border-radius:3px;background-color:rgba(0,0,0,.25)}.input-range:focus{outline:none}.progress{display:block;width:100%;height:.5625rem;margin:.5rem 0;overflow:hidden;background-color:rgba(0,0,0,.125);border:0;border-radius:10000px;-webkit-appearance:none}.progress::-webkit-progress-bar{-webkit-appearance:none;background-color:rgba(0,0,0,.125)}.progress::-webkit-progress-value{-webkit-appearance:none;background-color:currentcolor}.progress::-moz-progress-bar{background-color:currentcolor}.btn{font-family:inherit;font-size:inherit;font-weight:700;cursor:pointer;display:inline-block;line-height:1.125rem;padding:.5rem 1rem;margin:0;height:auto;border:1px solid transparent;vertical-align:middle;-webkit-appearance:none;color:inherit;background-color:transparent}.btn,.btn:hover{text-decoration:none}.btn:focus{outline:none;border-color:rgba(0,0,0,.125);box-shadow:0 0 0 3px rgba(0,0,0,.25)}::-moz-focus-inner{border:0;padding:0}.btn-small{padding:.25rem .5rem}.btn-big{padding:1rem 1.25rem}.btn-narrow{padding-left:.5rem;padding-right:.5rem}.btn-primary{color:#fff;background-color:#0074d9;border-radius:3px}.btn-primary:hover{box-shadow:inset 0 0 0 20rem rgba(0,0,0,.0625)}.btn-primary:active{box-shadow:inset 0 0 0 20rem rgba(0,0,0,.125),inset 0 3px 4px 0 rgba(0,0,0,.25),0 0 1px rgba(0,0,0,.125)}.btn-primary.is-disabled,.btn-primary:disabled{opacity:.5}.btn-outline,.btn-outline:hover{border-color:currentcolor}.btn-outline{border-radius:3px}.btn-outline:hover{box-shadow:inset 0 0 0 20rem rgba(0,0,0,.0625)}.btn-outline:active{box-shadow:inset 0 0 0 20rem rgba(0,0,0,.125),inset 0 3px 4px 0 rgba(0,0,0,.25),0 0 1px rgba(0,0,0,.125)}.btn-outline.is-disabled,.btn-outline:disabled{opacity:.5}.lg-media,.md-media,.media,.sm-media{margin-left:-.5rem;margin-right:-.5rem}.media{display:-webkit-box;display:-ms-flexbox;display:flex}.media-center{-webkit-box-align:center;-ms-flex-align:center;-ms-grid-row-align:center;align-items:center}.media-bottom{-webkit-box-align:end;-ms-flex-align:end;-ms-grid-row-align:flex-end;align-items:flex-end}.media-body,.media-img{padding-left:.5rem;padding-right:.5rem}.media-body{-webkit-box-flex:1;-ms-flex:1 1 auto;flex:1 1 auto}@media (min-width:40em){.sm-media{display:-webkit-box;display:-ms-flexbox;display:flex}}@media (min-width:52em){.md-media{display:-webkit-box;display:-ms-flexbox;display:flex}}@media (min-width:64em){.lg-media{display:-webkit-box;display:-ms-flexbox;display:flex}}\n\n/*! Basscss | http://basscss.com | MIT License */.h1{font-size:2rem}.h2{font-size:1.5rem}.h3{font-size:1.25rem}.h4{font-size:1rem}.h5{font-size:.875rem}.h6{font-size:.75rem}.font-family-inherit{font-family:inherit}.font-size-inherit{font-size:inherit}.text-decoration-none{text-decoration:none}.bold{font-weight:700}.regular{font-weight:400}.italic{font-style:italic}.caps{text-transform:uppercase;letter-spacing:.2em}.left-align{text-align:left}.center{text-align:center}.right-align{text-align:right}.justify{text-align:justify}.nowrap{white-space:nowrap}.break-word{word-wrap:break-word}.line-height-1{line-height:1}.line-height-2{line-height:1.125}.line-height-3{line-height:1.25}.line-height-4{line-height:1.5}.list-style-none{list-style:none}.underline{text-decoration:underline}.truncate{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.list-reset{list-style:none;padding-left:0}.inline{display:inline}.block{display:block}.inline-block{display:inline-block}.table{display:table}.table-cell{display:table-cell}.overflow-hidden{overflow:hidden}.overflow-scroll{overflow:scroll}.overflow-auto{overflow:auto}.clearfix:after,.clearfix:before{content:\" \";display:table}.clearfix:after{clear:both}.left{float:left}.right{float:right}.fit{max-width:100%}.max-width-1{max-width:24rem}.max-width-2{max-width:32rem}.max-width-3{max-width:48rem}.max-width-4{max-width:64rem}.border-box{box-sizing:border-box}.align-baseline{vertical-align:baseline}.align-top{vertical-align:top}.align-middle{vertical-align:middle}.align-bottom{vertical-align:bottom}.m0{margin:0}.mt0{margin-top:0}.mr0{margin-right:0}.mb0{margin-bottom:0}.ml0,.mx0{margin-left:0}.mx0{margin-right:0}.my0{margin-top:0;margin-bottom:0}.m1{margin:.5rem}.mt1{margin-top:.5rem}.mr1{margin-right:.5rem}.mb1{margin-bottom:.5rem}.ml1,.mx1{margin-left:.5rem}.mx1{margin-right:.5rem}.my1{margin-top:.5rem;margin-bottom:.5rem}.m2{margin:1rem}.mt2{margin-top:1rem}.mr2{margin-right:1rem}.mb2{margin-bottom:1rem}.ml2,.mx2{margin-left:1rem}.mx2{margin-right:1rem}.my2{margin-top:1rem;margin-bottom:1rem}.m3{margin:2rem}.mt3{margin-top:2rem}.mr3{margin-right:2rem}.mb3{margin-bottom:2rem}.ml3,.mx3{margin-left:2rem}.mx3{margin-right:2rem}.my3{margin-top:2rem;margin-bottom:2rem}.m4{margin:4rem}.mt4{margin-top:4rem}.mr4{margin-right:4rem}.mb4{margin-bottom:4rem}.ml4,.mx4{margin-left:4rem}.mx4{margin-right:4rem}.my4{margin-top:4rem;margin-bottom:4rem}.mxn1{margin-left:-.5rem;margin-right:-.5rem}.mxn2{margin-left:-1rem;margin-right:-1rem}.mxn3{margin-left:-2rem;margin-right:-2rem}.mxn4{margin-left:-4rem;margin-right:-4rem}.ml-auto{margin-left:auto}.mr-auto,.mx-auto{margin-right:auto}.mx-auto{margin-left:auto}.p0{padding:0}.pt0{padding-top:0}.pr0{padding-right:0}.pb0{padding-bottom:0}.pl0,.px0{padding-left:0}.px0{padding-right:0}.py0{padding-top:0;padding-bottom:0}.p1{padding:.5rem}.pt1{padding-top:.5rem}.pr1{padding-right:.5rem}.pb1{padding-bottom:.5rem}.pl1{padding-left:.5rem}.py1{padding-top:.5rem;padding-bottom:.5rem}.px1{padding-left:.5rem;padding-right:.5rem}.p2{padding:1rem}.pt2{padding-top:1rem}.pr2{padding-right:1rem}.pb2{padding-bottom:1rem}.pl2{padding-left:1rem}.py2{padding-top:1rem;padding-bottom:1rem}.px2{padding-left:1rem;padding-right:1rem}.p3{padding:2rem}.pt3{padding-top:2rem}.pr3{padding-right:2rem}.pb3{padding-bottom:2rem}.pl3{padding-left:2rem}.py3{padding-top:2rem;padding-bottom:2rem}.px3{padding-left:2rem;padding-right:2rem}.p4{padding:4rem}.pt4{padding-top:4rem}.pr4{padding-right:4rem}.pb4{padding-bottom:4rem}.pl4{padding-left:4rem}.py4{padding-top:4rem;padding-bottom:4rem}.px4{padding-left:4rem;padding-right:4rem}.col{float:left}.col,.col-right{box-sizing:border-box}.col-right{float:right}.col-1{width:8.33333%}.col-2{width:16.66667%}.col-3{width:25%}.col-4{width:33.33333%}.col-5{width:41.66667%}.col-6{width:50%}.col-7{width:58.33333%}.col-8{width:66.66667%}.col-9{width:75%}.col-10{width:83.33333%}.col-11{width:91.66667%}.col-12{width:100%}@media (min-width:40em){.sm-col{float:left;box-sizing:border-box}.sm-col-right{float:right;box-sizing:border-box}.sm-col-1{width:8.33333%}.sm-col-2{width:16.66667%}.sm-col-3{width:25%}.sm-col-4{width:33.33333%}.sm-col-5{width:41.66667%}.sm-col-6{width:50%}.sm-col-7{width:58.33333%}.sm-col-8{width:66.66667%}.sm-col-9{width:75%}.sm-col-10{width:83.33333%}.sm-col-11{width:91.66667%}.sm-col-12{width:100%}}@media (min-width:52em){.md-col{float:left;box-sizing:border-box}.md-col-right{float:right;box-sizing:border-box}.md-col-1{width:8.33333%}.md-col-2{width:16.66667%}.md-col-3{width:25%}.md-col-4{width:33.33333%}.md-col-5{width:41.66667%}.md-col-6{width:50%}.md-col-7{width:58.33333%}.md-col-8{width:66.66667%}.md-col-9{width:75%}.md-col-10{width:83.33333%}.md-col-11{width:91.66667%}.md-col-12{width:100%}}@media (min-width:64em){.lg-col{float:left;box-sizing:border-box}.lg-col-right{float:right;box-sizing:border-box}.lg-col-1{width:8.33333%}.lg-col-2{width:16.66667%}.lg-col-3{width:25%}.lg-col-4{width:33.33333%}.lg-col-5{width:41.66667%}.lg-col-6{width:50%}.lg-col-7{width:58.33333%}.lg-col-8{width:66.66667%}.lg-col-9{width:75%}.lg-col-10{width:83.33333%}.lg-col-11{width:91.66667%}.lg-col-12{width:100%}}.flex{display:-webkit-box;display:-ms-flexbox;display:flex}@media (min-width:40em){.sm-flex{display:-webkit-box;display:-ms-flexbox;display:flex}}@media (min-width:52em){.md-flex{display:-webkit-box;display:-ms-flexbox;display:flex}}@media (min-width:64em){.lg-flex{display:-webkit-box;display:-ms-flexbox;display:flex}}.flex-column{-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column}.flex-wrap{-ms-flex-wrap:wrap;flex-wrap:wrap}.items-start{-webkit-box-align:start;-ms-flex-align:start;-ms-grid-row-align:flex-start;align-items:flex-start}.items-end{-webkit-box-align:end;-ms-flex-align:end;-ms-grid-row-align:flex-end;align-items:flex-end}.items-center{-webkit-box-align:center;-ms-flex-align:center;-ms-grid-row-align:center;align-items:center}.items-baseline{-webkit-box-align:baseline;-ms-flex-align:baseline;-ms-grid-row-align:baseline;align-items:baseline}.items-stretch{-webkit-box-align:stretch;-ms-flex-align:stretch;-ms-grid-row-align:stretch;align-items:stretch}.self-start{-ms-flex-item-align:start;align-self:flex-start}.self-end{-ms-flex-item-align:end;align-self:flex-end}.self-center{-ms-flex-item-align:center;align-self:center}.self-baseline{-ms-flex-item-align:baseline;align-self:baseline}.self-stretch{-ms-flex-item-align:stretch;align-self:stretch}.justify-start{-webkit-box-pack:start;-ms-flex-pack:start;justify-content:flex-start}.justify-end{-webkit-box-pack:end;-ms-flex-pack:end;justify-content:flex-end}.justify-center{-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center}.justify-between{-webkit-box-pack:justify;-ms-flex-pack:justify;justify-content:space-between}.justify-around{-ms-flex-pack:distribute;justify-content:space-around}.content-start{-ms-flex-line-pack:start;align-content:flex-start}.content-end{-ms-flex-line-pack:end;align-content:flex-end}.content-center{-ms-flex-line-pack:center;align-content:center}.content-between{-ms-flex-line-pack:justify;align-content:space-between}.content-around{-ms-flex-line-pack:distribute;align-content:space-around}.content-stretch{-ms-flex-line-pack:stretch;align-content:stretch}.flex-auto{-webkit-box-flex:1;-ms-flex:1 1 auto;flex:1 1 auto;min-width:0;min-height:0}.flex-none{-webkit-box-flex:0;-ms-flex:none;flex:none}.order-0{-webkit-box-ordinal-group:1;-ms-flex-order:0;order:0}.order-1{-webkit-box-ordinal-group:2;-ms-flex-order:1;order:1}.order-2{-webkit-box-ordinal-group:3;-ms-flex-order:2;order:2}.order-3{-webkit-box-ordinal-group:4;-ms-flex-order:3;order:3}.order-last{-webkit-box-ordinal-group:100000;-ms-flex-order:99999;order:99999}.relative{position:relative}.absolute{position:absolute}.fixed{position:fixed}.top-0{top:0}.right-0{right:0}.bottom-0{bottom:0}.left-0{left:0}.z1{z-index:1}.z2{z-index:2}.z3{z-index:3}.z4{z-index:4}.border{border-style:solid;border-width:1px}.border-top{border-top-style:solid;border-top-width:1px}.border-right{border-right-style:solid;border-right-width:1px}.border-bottom{border-bottom-style:solid;border-bottom-width:1px}.border-left{border-left-style:solid;border-left-width:1px}.border-none{border:0}.rounded{border-radius:3px}.circle{border-radius:50%}.rounded-top{border-radius:3px 3px 0 0}.rounded-right{border-radius:0 3px 3px 0}.rounded-bottom{border-radius:0 0 3px 3px}.rounded-left{border-radius:3px 0 0 3px}.not-rounded{border-radius:0}.hide{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)}@media (max-width:40em){.xs-hide{display:none!important}}@media (min-width:40em) and (max-width:52em){.sm-hide{display:none!important}}@media (min-width:52em) and (max-width:64em){.md-hide{display:none!important}}@media (min-width:64em){.lg-hide{display:none!important}}.display-none{display:none!important}@media (min-width:40em){.sm-m0{margin:0}.sm-mt0{margin-top:0}.sm-mr0{margin-right:0}.sm-mb0{margin-bottom:0}.sm-ml0,.sm-mx0{margin-left:0}.sm-mx0{margin-right:0}.sm-my0{margin-top:0;margin-bottom:0}.sm-m1{margin:.5rem}.sm-mt1{margin-top:.5rem}.sm-mr1{margin-right:.5rem}.sm-mb1{margin-bottom:.5rem}.sm-ml1,.sm-mx1{margin-left:.5rem}.sm-mx1{margin-right:.5rem}.sm-my1{margin-top:.5rem;margin-bottom:.5rem}.sm-m2{margin:1rem}.sm-mt2{margin-top:1rem}.sm-mr2{margin-right:1rem}.sm-mb2{margin-bottom:1rem}.sm-ml2,.sm-mx2{margin-left:1rem}.sm-mx2{margin-right:1rem}.sm-my2{margin-top:1rem;margin-bottom:1rem}.sm-m3{margin:2rem}.sm-mt3{margin-top:2rem}.sm-mr3{margin-right:2rem}.sm-mb3{margin-bottom:2rem}.sm-ml3,.sm-mx3{margin-left:2rem}.sm-mx3{margin-right:2rem}.sm-my3{margin-top:2rem;margin-bottom:2rem}.sm-m4{margin:4rem}.sm-mt4{margin-top:4rem}.sm-mr4{margin-right:4rem}.sm-mb4{margin-bottom:4rem}.sm-ml4,.sm-mx4{margin-left:4rem}.sm-mx4{margin-right:4rem}.sm-my4{margin-top:4rem;margin-bottom:4rem}.sm-mxn1{margin-left:-.5rem;margin-right:-.5rem}.sm-mxn2{margin-left:-1rem;margin-right:-1rem}.sm-mxn3{margin-left:-2rem;margin-right:-2rem}.sm-mxn4{margin-left:-4rem;margin-right:-4rem}.sm-ml-auto{margin-left:auto}.sm-mr-auto,.sm-mx-auto{margin-right:auto}.sm-mx-auto{margin-left:auto}}@media (min-width:52em){.md-m0{margin:0}.md-mt0{margin-top:0}.md-mr0{margin-right:0}.md-mb0{margin-bottom:0}.md-ml0,.md-mx0{margin-left:0}.md-mx0{margin-right:0}.md-my0{margin-top:0;margin-bottom:0}.md-m1{margin:.5rem}.md-mt1{margin-top:.5rem}.md-mr1{margin-right:.5rem}.md-mb1{margin-bottom:.5rem}.md-ml1,.md-mx1{margin-left:.5rem}.md-mx1{margin-right:.5rem}.md-my1{margin-top:.5rem;margin-bottom:.5rem}.md-m2{margin:1rem}.md-mt2{margin-top:1rem}.md-mr2{margin-right:1rem}.md-mb2{margin-bottom:1rem}.md-ml2,.md-mx2{margin-left:1rem}.md-mx2{margin-right:1rem}.md-my2{margin-top:1rem;margin-bottom:1rem}.md-m3{margin:2rem}.md-mt3{margin-top:2rem}.md-mr3{margin-right:2rem}.md-mb3{margin-bottom:2rem}.md-ml3,.md-mx3{margin-left:2rem}.md-mx3{margin-right:2rem}.md-my3{margin-top:2rem;margin-bottom:2rem}.md-m4{margin:4rem}.md-mt4{margin-top:4rem}.md-mr4{margin-right:4rem}.md-mb4{margin-bottom:4rem}.md-ml4,.md-mx4{margin-left:4rem}.md-mx4{margin-right:4rem}.md-my4{margin-top:4rem;margin-bottom:4rem}.md-mxn1{margin-left:-.5rem;margin-right:-.5rem}.md-mxn2{margin-left:-1rem;margin-right:-1rem}.md-mxn3{margin-left:-2rem;margin-right:-2rem}.md-mxn4{margin-left:-4rem;margin-right:-4rem}.md-ml-auto{margin-left:auto}.md-mr-auto,.md-mx-auto{margin-right:auto}.md-mx-auto{margin-left:auto}}@media (min-width:64em){.lg-m0{margin:0}.lg-mt0{margin-top:0}.lg-mr0{margin-right:0}.lg-mb0{margin-bottom:0}.lg-ml0,.lg-mx0{margin-left:0}.lg-mx0{margin-right:0}.lg-my0{margin-top:0;margin-bottom:0}.lg-m1{margin:.5rem}.lg-mt1{margin-top:.5rem}.lg-mr1{margin-right:.5rem}.lg-mb1{margin-bottom:.5rem}.lg-ml1,.lg-mx1{margin-left:.5rem}.lg-mx1{margin-right:.5rem}.lg-my1{margin-top:.5rem;margin-bottom:.5rem}.lg-m2{margin:1rem}.lg-mt2{margin-top:1rem}.lg-mr2{margin-right:1rem}.lg-mb2{margin-bottom:1rem}.lg-ml2,.lg-mx2{margin-left:1rem}.lg-mx2{margin-right:1rem}.lg-my2{margin-top:1rem;margin-bottom:1rem}.lg-m3{margin:2rem}.lg-mt3{margin-top:2rem}.lg-mr3{margin-right:2rem}.lg-mb3{margin-bottom:2rem}.lg-ml3,.lg-mx3{margin-left:2rem}.lg-mx3{margin-right:2rem}.lg-my3{margin-top:2rem;margin-bottom:2rem}.lg-m4{margin:4rem}.lg-mt4{margin-top:4rem}.lg-mr4{margin-right:4rem}.lg-mb4{margin-bottom:4rem}.lg-ml4,.lg-mx4{margin-left:4rem}.lg-mx4{margin-right:4rem}.lg-my4{margin-top:4rem;margin-bottom:4rem}.lg-mxn1{margin-left:-.5rem;margin-right:-.5rem}.lg-mxn2{margin-left:-1rem;margin-right:-1rem}.lg-mxn3{margin-left:-2rem;margin-right:-2rem}.lg-mxn4{margin-left:-4rem;margin-right:-4rem}.lg-ml-auto{margin-left:auto}.lg-mr-auto,.lg-mx-auto{margin-right:auto}.lg-mx-auto{margin-left:auto}}@media (min-width:40em){.sm-p0{padding:0}.sm-pt0{padding-top:0}.sm-pr0{padding-right:0}.sm-pb0{padding-bottom:0}.sm-pl0,.sm-px0{padding-left:0}.sm-px0{padding-right:0}.sm-py0{padding-top:0;padding-bottom:0}.sm-p1{padding:.5rem}.sm-pt1{padding-top:.5rem}.sm-pr1{padding-right:.5rem}.sm-pb1{padding-bottom:.5rem}.sm-pl1,.sm-px1{padding-left:.5rem}.sm-px1{padding-right:.5rem}.sm-py1{padding-top:.5rem;padding-bottom:.5rem}.sm-p2{padding:1rem}.sm-pt2{padding-top:1rem}.sm-pr2{padding-right:1rem}.sm-pb2{padding-bottom:1rem}.sm-pl2,.sm-px2{padding-left:1rem}.sm-px2{padding-right:1rem}.sm-py2{padding-top:1rem;padding-bottom:1rem}.sm-p3{padding:2rem}.sm-pt3{padding-top:2rem}.sm-pr3{padding-right:2rem}.sm-pb3{padding-bottom:2rem}.sm-pl3,.sm-px3{padding-left:2rem}.sm-px3{padding-right:2rem}.sm-py3{padding-top:2rem;padding-bottom:2rem}.sm-p4{padding:4rem}.sm-pt4{padding-top:4rem}.sm-pr4{padding-right:4rem}.sm-pb4{padding-bottom:4rem}.sm-pl4,.sm-px4{padding-left:4rem}.sm-px4{padding-right:4rem}.sm-py4{padding-top:4rem;padding-bottom:4rem}}@media (min-width:52em){.md-p0{padding:0}.md-pt0{padding-top:0}.md-pr0{padding-right:0}.md-pb0{padding-bottom:0}.md-pl0,.md-px0{padding-left:0}.md-px0{padding-right:0}.md-py0{padding-top:0;padding-bottom:0}.md-p1{padding:.5rem}.md-pt1{padding-top:.5rem}.md-pr1{padding-right:.5rem}.md-pb1{padding-bottom:.5rem}.md-pl1,.md-px1{padding-left:.5rem}.md-px1{padding-right:.5rem}.md-py1{padding-top:.5rem;padding-bottom:.5rem}.md-p2{padding:1rem}.md-pt2{padding-top:1rem}.md-pr2{padding-right:1rem}.md-pb2{padding-bottom:1rem}.md-pl2,.md-px2{padding-left:1rem}.md-px2{padding-right:1rem}.md-py2{padding-top:1rem;padding-bottom:1rem}.md-p3{padding:2rem}.md-pt3{padding-top:2rem}.md-pr3{padding-right:2rem}.md-pb3{padding-bottom:2rem}.md-pl3,.md-px3{padding-left:2rem}.md-px3{padding-right:2rem}.md-py3{padding-top:2rem;padding-bottom:2rem}.md-p4{padding:4rem}.md-pt4{padding-top:4rem}.md-pr4{padding-right:4rem}.md-pb4{padding-bottom:4rem}.md-pl4,.md-px4{padding-left:4rem}.md-px4{padding-right:4rem}.md-py4{padding-top:4rem;padding-bottom:4rem}}@media (min-width:64em){.lg-p0{padding:0}.lg-pt0{padding-top:0}.lg-pr0{padding-right:0}.lg-pb0{padding-bottom:0}.lg-pl0,.lg-px0{padding-left:0}.lg-px0{padding-right:0}.lg-py0{padding-top:0;padding-bottom:0}.lg-p1{padding:.5rem}.lg-pt1{padding-top:.5rem}.lg-pr1{padding-right:.5rem}.lg-pb1{padding-bottom:.5rem}.lg-pl1,.lg-px1{padding-left:.5rem}.lg-px1{padding-right:.5rem}.lg-py1{padding-top:.5rem;padding-bottom:.5rem}.lg-p2{padding:1rem}.lg-pt2{padding-top:1rem}.lg-pr2{padding-right:1rem}.lg-pb2{padding-bottom:1rem}.lg-pl2,.lg-px2{padding-left:1rem}.lg-px2{padding-right:1rem}.lg-py2{padding-top:1rem;padding-bottom:1rem}.lg-p3{padding:2rem}.lg-pt3{padding-top:2rem}.lg-pr3{padding-right:2rem}.lg-pb3{padding-bottom:2rem}.lg-pl3,.lg-px3{padding-left:2rem}.lg-px3{padding-right:2rem}.lg-py3{padding-top:2rem;padding-bottom:2rem}.lg-p4{padding:4rem}.lg-pt4{padding-top:4rem}.lg-pr4{padding-right:4rem}.lg-pb4{padding-bottom:4rem}.lg-pl4,.lg-px4{padding-left:4rem}.lg-px4{padding-right:4rem}.lg-py4{padding-top:4rem;padding-bottom:4rem}}@media (min-width:40em){.sm-inline{display:inline}.sm-block{display:block}.sm-inline-block{display:inline-block}.sm-table{display:table}.sm-table-cell{display:table-cell}.sm-overflow-hidden{overflow:hidden}.sm-overflow-scroll{overflow:scroll}.sm-overflow-auto{overflow:auto}.sm-left{float:left}.sm-right{float:right}}@media (min-width:52em){.md-inline{display:inline}.md-block{display:block}.md-inline-block{display:inline-block}.md-table{display:table}.md-table-cell{display:table-cell}.md-overflow-hidden{overflow:hidden}.md-overflow-scroll{overflow:scroll}.md-overflow-auto{overflow:auto}.md-left{float:left}.md-right{float:right}}@media (min-width:64em){.lg-inline{display:inline}.lg-block{display:block}.lg-inline-block{display:inline-block}.lg-table{display:table}.lg-table-cell{display:table-cell}.lg-overflow-hidden{overflow:hidden}.lg-overflow-scroll{overflow:scroll}.lg-overflow-auto{overflow:auto}.lg-left{float:left}.lg-right{float:right}}@media (min-width:40em){.sm-relative{position:relative}.sm-absolute{position:absolute}.sm-fixed{position:fixed}.sm-top-0{top:0}.sm-right-0{right:0}.sm-bottom-0{bottom:0}.sm-left-0{left:0}}@media (min-width:52em){.md-relative{position:relative}.md-absolute{position:absolute}.md-fixed{position:fixed}.md-top-0{top:0}.md-right-0{right:0}.md-bottom-0{bottom:0}.md-left-0{left:0}}@media (min-width:64em){.lg-relative{position:relative}.lg-absolute{position:absolute}.lg-fixed{position:fixed}.lg-top-0{top:0}.lg-right-0{right:0}.lg-bottom-0{bottom:0}.lg-left-0{left:0}}@media (min-width:40em){.sm-left-align{text-align:left}.sm-center{text-align:center}.sm-right-align{text-align:right}.sm-justify{text-align:justify}}@media (min-width:52em){.md-left-align{text-align:left}.md-center{text-align:center}.md-right-align{text-align:right}.md-justify{text-align:justify}}@media (min-width:64em){.lg-left-align{text-align:left}.lg-center{text-align:center}.lg-right-align{text-align:right}.lg-justify{text-align:justify}}@media (min-width:40em){.sm-h00{font-size:4rem}.sm-h0{font-size:3rem}.sm-h1{font-size:2rem}.sm-h2{font-size:1.5rem}.sm-h3{font-size:1.25rem}.sm-h4{font-size:1rem}.sm-h5{font-size:.875rem}.sm-h6{font-size:.75rem}}@media (min-width:52em){.md-h00{font-size:4rem}.md-h0{font-size:3rem}.md-h1{font-size:2rem}.md-h2{font-size:1.5rem}.md-h3{font-size:1.25rem}.md-h4{font-size:1rem}.md-h5{font-size:.875rem}.md-h6{font-size:.75rem}}@media (min-width:64em){.lg-h00{font-size:4rem}.lg-h0{font-size:3rem}.lg-h1{font-size:2rem}.lg-h2{font-size:1.5rem}.lg-h3{font-size:1.25rem}.lg-h4{font-size:1rem}.lg-h5{font-size:.875rem}.lg-h6{font-size:.75rem}}.black{color:#111}.gray{color:#aaa}.silver{color:#ddd}.white{color:#fff}.aqua{color:#7fdbff}.blue{color:#0074d9}.navy{color:#001f3f}.teal{color:#39cccc}.green{color:#2ecc40}.olive{color:#3d9970}.lime{color:#01ff70}.yellow{color:#ffdc00}.orange{color:#ff851b}.red{color:#ff4136}.fuchsia{color:#f012be}.purple{color:#b10dc9}.maroon{color:#85144b}.color-inherit{color:inherit}.muted{opacity:.5}.bg-black{background-color:#111}.bg-gray{background-color:#aaa}.bg-silver{background-color:#ddd}.bg-white{background-color:#fff}.bg-aqua{background-color:#7fdbff}.bg-blue{background-color:#0074d9}.bg-navy{background-color:#001f3f}.bg-teal{background-color:#39cccc}.bg-green{background-color:#2ecc40}.bg-olive{background-color:#3d9970}.bg-lime{background-color:#01ff70}.bg-yellow{background-color:#ffdc00}.bg-orange{background-color:#ff851b}.bg-red{background-color:#ff4136}.bg-fuchsia{background-color:#f012be}.bg-purple{background-color:#b10dc9}.bg-maroon{background-color:#85144b}.border-black{border-color:#111}.border-gray{border-color:#aaa}.border-silver{border-color:#ddd}.border-white{border-color:#fff}.border-aqua{border-color:#7fdbff}.border-blue{border-color:#0074d9}.border-navy{border-color:#001f3f}.border-teal{border-color:#39cccc}.border-green{border-color:#2ecc40}.border-olive{border-color:#3d9970}.border-lime{border-color:#01ff70}.border-yellow{border-color:#ffdc00}.border-orange{border-color:#ff851b}.border-red{border-color:#ff4136}.border-fuchsia{border-color:#f012be}.border-purple{border-color:#b10dc9}.border-maroon{border-color:#85144b}.bg-darken-1{background-color:rgba(0,0,0,.0625)}.bg-darken-2{background-color:rgba(0,0,0,.125)}.bg-darken-3{background-color:rgba(0,0,0,.25)}.bg-darken-4{background-color:rgba(0,0,0,.5)}.bg-lighten-1{background-color:hsla(0,0%,100%,.0625)}.bg-lighten-2{background-color:hsla(0,0%,100%,.125)}.bg-lighten-3{background-color:hsla(0,0%,100%,.25)}.bg-lighten-4{background-color:hsla(0,0%,100%,.5)}.bg-cover{background-size:cover}.bg-contain{background-size:contain}.bg-center{background-position:50%}.bg-top{background-position:top}.bg-right{background-position:100%}.bg-bottom{background-position:bottom}.bg-left{background-position:0}.bg-no-repeat{background-repeat:no-repeat}.bg-repeat-x{background-repeat:repeat-x}.bg-repeat-y{background-repeat:repeat-y}.all-initial{all:initial}.all-unset{all:unset}.all-inherit{all:inherit}.all-revert{all:revert}", ""]);
 
 // exports
-
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
-// css base code, injected by the css-loader
-module.exports = function (useSourceMap) {
-	var list = [];
-
-	// return the list of modules as css string
-	list.toString = function toString() {
-		return this.map(function (item) {
-			var content = cssWithMappingToString(item, useSourceMap);
-			if (item[2]) {
-				return "@media " + item[2] + "{" + content + "}";
-			} else {
-				return content;
-			}
-		}).join("");
-	};
-
-	// import a list of modules into the list
-	list.i = function (modules, mediaQuery) {
-		if (typeof modules === "string") modules = [[null, modules, ""]];
-		var alreadyImportedModules = {};
-		for (var i = 0; i < this.length; i++) {
-			var id = this[i][0];
-			if (typeof id === "number") alreadyImportedModules[id] = true;
-		}
-		for (i = 0; i < modules.length; i++) {
-			var item = modules[i];
-			// skip already imported module
-			// this implementation is not 100% perfect for weird media query combinations
-			//  when a module is imported multiple times with different media queries.
-			//  I hope this will never occur (Hey this way we have smaller bundles)
-			if (typeof item[0] !== "number" || !alreadyImportedModules[item[0]]) {
-				if (mediaQuery && !item[2]) {
-					item[2] = mediaQuery;
-				} else if (mediaQuery) {
-					item[2] = "(" + item[2] + ") and (" + mediaQuery + ")";
-				}
-				list.push(item);
-			}
-		}
-	};
-	return list;
-};
-
-function cssWithMappingToString(item, useSourceMap) {
-	var content = item[1] || '';
-	var cssMapping = item[3];
-	if (!cssMapping) {
-		return content;
-	}
-
-	if (useSourceMap && typeof btoa === 'function') {
-		var sourceMapping = toComment(cssMapping);
-		var sourceURLs = cssMapping.sources.map(function (source) {
-			return '/*# sourceURL=' + cssMapping.sourceRoot + source + ' */';
-		});
-
-		return [content].concat(sourceURLs).concat([sourceMapping]).join('\n');
-	}
-
-	return [content].join('\n');
-}
-
-// Adapted from convert-source-map (MIT)
-function toComment(sourceMap) {
-	// eslint-disable-next-line no-undef
-	var base64 = btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap))));
-	var data = 'sourceMappingURL=data:application/json;charset=utf-8;base64,' + base64;
-
-	return '/*# ' + data + ' */';
-}
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
-
-var stylesInDom = {};
-
-var	memoize = function (fn) {
-	var memo;
-
-	return function () {
-		if (typeof memo === "undefined") memo = fn.apply(this, arguments);
-		return memo;
-	};
-};
-
-var isOldIE = memoize(function () {
-	// Test for IE <= 9 as proposed by Browserhacks
-	// @see http://browserhacks.com/#hack-e71d8692f65334173fee715c222cb805
-	// Tests for existence of standard globals is to allow style-loader
-	// to operate correctly into non-standard environments
-	// @see https://github.com/webpack-contrib/style-loader/issues/177
-	return window && document && document.all && !window.atob;
-});
-
-var getElement = (function (fn) {
-	var memo = {};
-
-	return function(selector) {
-		if (typeof memo[selector] === "undefined") {
-			memo[selector] = fn.call(this, selector);
-		}
-
-		return memo[selector]
-	};
-})(function (target) {
-	return document.querySelector(target)
-});
-
-var singleton = null;
-var	singletonCounter = 0;
-var	stylesInsertedAtTop = [];
-
-var	fixUrls = __webpack_require__(17);
-
-module.exports = function(list, options) {
-	if (typeof DEBUG !== "undefined" && DEBUG) {
-		if (typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
-	}
-
-	options = options || {};
-
-	options.attrs = typeof options.attrs === "object" ? options.attrs : {};
-
-	// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
-	// tags it will allow on a page
-	if (!options.singleton) options.singleton = isOldIE();
-
-	// By default, add <style> tags to the <head> element
-	if (!options.insertInto) options.insertInto = "head";
-
-	// By default, add <style> tags to the bottom of the target
-	if (!options.insertAt) options.insertAt = "bottom";
-
-	var styles = listToStyles(list, options);
-
-	addStylesToDom(styles, options);
-
-	return function update (newList) {
-		var mayRemove = [];
-
-		for (var i = 0; i < styles.length; i++) {
-			var item = styles[i];
-			var domStyle = stylesInDom[item.id];
-
-			domStyle.refs--;
-			mayRemove.push(domStyle);
-		}
-
-		if(newList) {
-			var newStyles = listToStyles(newList, options);
-			addStylesToDom(newStyles, options);
-		}
-
-		for (var i = 0; i < mayRemove.length; i++) {
-			var domStyle = mayRemove[i];
-
-			if(domStyle.refs === 0) {
-				for (var j = 0; j < domStyle.parts.length; j++) domStyle.parts[j]();
-
-				delete stylesInDom[domStyle.id];
-			}
-		}
-	};
-};
-
-function addStylesToDom (styles, options) {
-	for (var i = 0; i < styles.length; i++) {
-		var item = styles[i];
-		var domStyle = stylesInDom[item.id];
-
-		if(domStyle) {
-			domStyle.refs++;
-
-			for(var j = 0; j < domStyle.parts.length; j++) {
-				domStyle.parts[j](item.parts[j]);
-			}
-
-			for(; j < item.parts.length; j++) {
-				domStyle.parts.push(addStyle(item.parts[j], options));
-			}
-		} else {
-			var parts = [];
-
-			for(var j = 0; j < item.parts.length; j++) {
-				parts.push(addStyle(item.parts[j], options));
-			}
-
-			stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
-		}
-	}
-}
-
-function listToStyles (list, options) {
-	var styles = [];
-	var newStyles = {};
-
-	for (var i = 0; i < list.length; i++) {
-		var item = list[i];
-		var id = options.base ? item[0] + options.base : item[0];
-		var css = item[1];
-		var media = item[2];
-		var sourceMap = item[3];
-		var part = {css: css, media: media, sourceMap: sourceMap};
-
-		if(!newStyles[id]) styles.push(newStyles[id] = {id: id, parts: [part]});
-		else newStyles[id].parts.push(part);
-	}
-
-	return styles;
-}
-
-function insertStyleElement (options, style) {
-	var target = getElement(options.insertInto)
-
-	if (!target) {
-		throw new Error("Couldn't find a style target. This probably means that the value for the 'insertInto' parameter is invalid.");
-	}
-
-	var lastStyleElementInsertedAtTop = stylesInsertedAtTop[stylesInsertedAtTop.length - 1];
-
-	if (options.insertAt === "top") {
-		if (!lastStyleElementInsertedAtTop) {
-			target.insertBefore(style, target.firstChild);
-		} else if (lastStyleElementInsertedAtTop.nextSibling) {
-			target.insertBefore(style, lastStyleElementInsertedAtTop.nextSibling);
-		} else {
-			target.appendChild(style);
-		}
-		stylesInsertedAtTop.push(style);
-	} else if (options.insertAt === "bottom") {
-		target.appendChild(style);
-	} else {
-		throw new Error("Invalid value for parameter 'insertAt'. Must be 'top' or 'bottom'.");
-	}
-}
-
-function removeStyleElement (style) {
-	if (style.parentNode === null) return false;
-	style.parentNode.removeChild(style);
-
-	var idx = stylesInsertedAtTop.indexOf(style);
-	if(idx >= 0) {
-		stylesInsertedAtTop.splice(idx, 1);
-	}
-}
-
-function createStyleElement (options) {
-	var style = document.createElement("style");
-
-	options.attrs.type = "text/css";
-
-	addAttrs(style, options.attrs);
-	insertStyleElement(options, style);
-
-	return style;
-}
-
-function createLinkElement (options) {
-	var link = document.createElement("link");
-
-	options.attrs.type = "text/css";
-	options.attrs.rel = "stylesheet";
-
-	addAttrs(link, options.attrs);
-	insertStyleElement(options, link);
-
-	return link;
-}
-
-function addAttrs (el, attrs) {
-	Object.keys(attrs).forEach(function (key) {
-		el.setAttribute(key, attrs[key]);
-	});
-}
-
-function addStyle (obj, options) {
-	var style, update, remove, result;
-
-	// If a transform function was defined, run it on the css
-	if (options.transform && obj.css) {
-	    result = options.transform(obj.css);
-
-	    if (result) {
-	    	// If transform returns a value, use that instead of the original css.
-	    	// This allows running runtime transformations on the css.
-	    	obj.css = result;
-	    } else {
-	    	// If the transform function returns a falsy value, don't add this css.
-	    	// This allows conditional loading of css
-	    	return function() {
-	    		// noop
-	    	};
-	    }
-	}
-
-	if (options.singleton) {
-		var styleIndex = singletonCounter++;
-
-		style = singleton || (singleton = createStyleElement(options));
-
-		update = applyToSingletonTag.bind(null, style, styleIndex, false);
-		remove = applyToSingletonTag.bind(null, style, styleIndex, true);
-
-	} else if (
-		obj.sourceMap &&
-		typeof URL === "function" &&
-		typeof URL.createObjectURL === "function" &&
-		typeof URL.revokeObjectURL === "function" &&
-		typeof Blob === "function" &&
-		typeof btoa === "function"
-	) {
-		style = createLinkElement(options);
-		update = updateLink.bind(null, style, options);
-		remove = function () {
-			removeStyleElement(style);
-
-			if(style.href) URL.revokeObjectURL(style.href);
-		};
-	} else {
-		style = createStyleElement(options);
-		update = applyToTag.bind(null, style);
-		remove = function () {
-			removeStyleElement(style);
-		};
-	}
-
-	update(obj);
-
-	return function updateStyle (newObj) {
-		if (newObj) {
-			if (
-				newObj.css === obj.css &&
-				newObj.media === obj.media &&
-				newObj.sourceMap === obj.sourceMap
-			) {
-				return;
-			}
-
-			update(obj = newObj);
-		} else {
-			remove();
-		}
-	};
-}
-
-var replaceText = (function () {
-	var textStore = [];
-
-	return function (index, replacement) {
-		textStore[index] = replacement;
-
-		return textStore.filter(Boolean).join('\n');
-	};
-})();
-
-function applyToSingletonTag (style, index, remove, obj) {
-	var css = remove ? "" : obj.css;
-
-	if (style.styleSheet) {
-		style.styleSheet.cssText = replaceText(index, css);
-	} else {
-		var cssNode = document.createTextNode(css);
-		var childNodes = style.childNodes;
-
-		if (childNodes[index]) style.removeChild(childNodes[index]);
-
-		if (childNodes.length) {
-			style.insertBefore(cssNode, childNodes[index]);
-		} else {
-			style.appendChild(cssNode);
-		}
-	}
-}
-
-function applyToTag (style, obj) {
-	var css = obj.css;
-	var media = obj.media;
-
-	if(media) {
-		style.setAttribute("media", media)
-	}
-
-	if(style.styleSheet) {
-		style.styleSheet.cssText = css;
-	} else {
-		while(style.firstChild) {
-			style.removeChild(style.firstChild);
-		}
-
-		style.appendChild(document.createTextNode(css));
-	}
-}
-
-function updateLink (link, options, obj) {
-	var css = obj.css;
-	var sourceMap = obj.sourceMap;
-
-	/*
-		If convertToAbsoluteUrls isn't defined, but sourcemaps are enabled
-		and there is no publicPath defined then lets turn convertToAbsoluteUrls
-		on by default.  Otherwise default to the convertToAbsoluteUrls option
-		directly
-	*/
-	var autoFixUrls = options.convertToAbsoluteUrls === undefined && sourceMap;
-
-	if (options.convertToAbsoluteUrls || autoFixUrls) {
-		css = fixUrls(css);
-	}
-
-	if (sourceMap) {
-		// http://stackoverflow.com/a/26603875
-		css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
-	}
-
-	var blob = new Blob([css], { type: "text/css" });
-
-	var oldSrc = link.href;
-
-	link.href = URL.createObjectURL(blob);
-
-	if(oldSrc) URL.revokeObjectURL(oldSrc);
-}
 
 
 /***/ }),
@@ -3362,6 +3364,51 @@ module.exports = function (css) {
 
 /***/ }),
 /* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+// style-loader: Adds some css to the DOM by adding a <style> tag
+
+// load the styles
+var content = __webpack_require__(19);
+if(typeof content === 'string') content = [[module.i, content, '']];
+// Prepare cssTransformation
+var transform;
+
+var options = {}
+options.transform = transform
+// add the styles to the DOM
+var update = __webpack_require__(5)(content, options);
+if(content.locals) module.exports = content.locals;
+// Hot Module Replacement
+if(false) {
+	// When the styles change, update the <style> tags
+	if(!content.locals) {
+		module.hot.accept("!!../node_modules/css-loader/index.js!./index.css", function() {
+			var newContent = require("!!../node_modules/css-loader/index.js!./index.css");
+			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+			update(newContent);
+		});
+	}
+	// When the module is disposed, remove the <style> tags
+	module.hot.dispose(function() { update(); });
+}
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(4)(undefined);
+// imports
+
+
+// module
+exports.push([module.i, "tr.Victory {\n  background: #83C084;\n}\n\ntr.Reaction {\n  background: #77abe2;\n}\n\ntr.Treasure {\n  background: #E7D68B;\n}\n\ntr.Action.Victory {\n  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(131,192,132,1) 100%);\n}\n\ntr.Treasure.Victory {\n  background: linear-gradient(to bottom, #E7D68B 0%, #83C084 100%);\n}\n\ntr.Action.Treasure {\n  background: linear-gradient(to bottom, #fff 0%, #E7D68B 100%)\n}\n\nth {\n  text-align: left;\n}\n\nth.cost {\n  text-align: right;\n}\n\ntd.cost {\n  text-align: right;\n}\n\ntable {\n  max-width: 1200px;\n  border-collapse: collapse;\n}\n", ""]);
+
+// exports
+
+
+/***/ }),
+/* 20 */
 /***/ (function(module, exports) {
 
 module.exports = [
@@ -3370,14 +3417,18 @@ module.exports = [
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Action, Discard any number of cards. +1 Card per card discarded."
 	},
 	{
 		"name": "Chapel",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "Trash up to 4 cards from your hand."
 	},
 	{
 		"name": "Moat",
@@ -3385,21 +3436,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reaction"
-		]
+		],
+		"cost": 2,
+		"description": "+2 Cards, When another player plays an Attack card, you may reveal this from your hand. If you do, you are unaffected by that Attack."
 	},
 	{
 		"name": "Village",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card, +2 Actions."
 	},
 	{
 		"name": "Workshop",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "Gain a card costing up to 4 Coins."
 	},
 	{
 		"name": "Bureaucrat",
@@ -3407,14 +3464,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "Gain a silver card; put it on top of your deck. Each other player reveals a Victory card from his hand and puts it on his deck (or reveals a hand with no Victory cards)."
 	},
 	{
 		"name": "Gardens",
 		"set": "Base",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 4,
+		"description": "Variable, Worth 1 Victory for every 10 cards in your deck (rounded down)."
 	},
 	{
 		"name": "Militia",
@@ -3422,77 +3483,99 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Coins, Each other player discards down to 3 cards in his hand."
 	},
 	{
 		"name": "Moneylender",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Trash a Copper from your hand. If you do, +3 Coins."
 	},
 	{
 		"name": "Remodel",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Trash a card from your hand. Gain a card costing up to 2 Coins more than the trashed card."
 	},
 	{
 		"name": "Smithy",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+3 Cards."
 	},
 	{
 		"name": "Throne Room",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Choose an Action card in your hand. Play it twice."
 	},
 	{
 		"name": "Council Room",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+4 Cards, +1 Buy, Each other player draws a card."
 	},
 	{
 		"name": "Festival",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Actions, +1 Buy, +2 Coins."
 	},
 	{
 		"name": "Laboratory",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards, +1 Action."
 	},
 	{
 		"name": "Library",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Draw until you have 7 cards in hand. You may set aside any Action cards drawn this way, as you draw them; discard the set aside cards after you finish drawing."
 	},
 	{
 		"name": "Market",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +1 Action, +1 Buy, +1 Coin."
 	},
 	{
 		"name": "Mine",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Trash a Treasure card from your hand. Gain a Treasure card costing up to 3 Coins more; put it into your hand."
 	},
 	{
 		"name": "Witch",
@@ -3500,58 +3583,54 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards, Each other player gains a Curse card."
 	},
 	{
 		"name": "Courtyard",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+3 Card, Put a card from your hand on top of your deck."
 	},
 	{
 		"name": "Pawn",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
-	},
-	{
-		"name": "Secret Chamber",
-		"set": "Intrigue",
-		"type": [
-			"Action",
-			"Reaction"
-		]
-	},
-	{
-		"name": "Great Hall",
-		"set": "Intrigue",
-		"type": [
-			"Action",
-			"Victory"
-		]
+		],
+		"cost": 2,
+		"description": "Choose two: +1 Card, +1 Action, +1 Buy, +1 Coin. (The choices must be different.)."
 	},
 	{
 		"name": "Masquerade",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Cards<br><br>Each player passes a card from his hand to the left at once. Then you may trash a card from your hand."
 	},
 	{
 		"name": "Shanty Town",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Actions, Reveal your hand. If you have no Action cards in hand, +2 Cards."
 	},
 	{
 		"name": "Steward",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "Choose one: +2 Cards; or +2 Coins; or trash 2 cards from your hand."
 	},
 	{
 		"name": "Swindler",
@@ -3559,70 +3638,72 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Coins, Each other player trashes the top card of his deck and gains a card with the same cost that you choose."
 	},
 	{
 		"name": "Wishing Well",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card, +1 Action, Name a card, then reveal the top card of your deck. If it is the named card, put it in your hand."
 	},
 	{
 		"name": "Baron",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy, You may discard an Estate card. If you do, +4 Coins. Otherwise, gain an Estate card."
 	},
 	{
 		"name": "Bridge",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy, +1 Coin. All cards (including cards in players&apos; hands) cost 1 Coin less this turn, but not less than 0 Coins."
 	},
 	{
 		"name": "Conspirator",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
-	},
-	{
-		"name": "Coppersmith",
-		"set": "Intrigue",
-		"type": [
-			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Coins. If you&apos;ve played 3 or more Actions this turn (counting this): +1 Card, +1 Action."
 	},
 	{
 		"name": "Ironworks",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Gain a card costing up to 4 Coins. If it is an... Action card, +1 Action. Treasure card, +1 Coin. Victory card, +1 Card."
 	},
 	{
 		"name": "Mining Village",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
-	},
-	{
-		"name": "Scout",
-		"set": "Intrigue",
-		"type": [
-			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card, +2 Actions. You may trash this card immediately. If you do, +2 Coins."
 	},
 	{
 		"name": "Duke",
 		"set": "Intrigue",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 1 Victory per Duchy you have."
 	},
 	{
 		"name": "Minion",
@@ -3630,15 +3711,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
-	},
-	{
-		"name": "Saboteur",
-		"set": "Intrigue",
-		"type": [
-			"Action",
-			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action, Choose one: +2 Coins; or discard your hand, +4 Cards, and each other player with at least 5 cards in hand discards his hand and draws 4 cards."
 	},
 	{
 		"name": "Torturer",
@@ -3646,28 +3721,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+3 Card, Each other player chooses one: he discards 2 cards; or he gains a Curse card, putting it in his hand."
 	},
 	{
 		"name": "Trading Post",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
-	},
-	{
-		"name": "Tribute",
-		"set": "Intrigue",
-		"type": [
-			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Trash 2 cards from your hand. If you do, gain a silver card; put it into your hand."
 	},
 	{
 		"name": "Upgrade",
 		"set": "Intrigue",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +1 Action, Trash a card from your hand. Gain a card costing exactly 1 Coin more than it."
 	},
 	{
 		"name": "Harem",
@@ -3675,7 +3749,9 @@ module.exports = [
 		"type": [
 			"Treasure",
 			"Victory"
-		]
+		],
+		"cost": 6,
+		"description": "2 Coins, 2 Victory."
 	},
 	{
 		"name": "Nobles",
@@ -3683,14 +3759,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Victory"
-		]
+		],
+		"cost": 6,
+		"description": "2 Victory, Choose one: +3 Cards, or +2 Actions."
 	},
 	{
 		"name": "Embargo",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+2 Coins, Trash this card. Put an Embargo token on top of a Supply pile. - When a player buys a card, he gains a Curse card per Embargo token on that pile."
 	},
 	{
 		"name": "Haven",
@@ -3698,7 +3778,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Card, +1 Action, Set aside a card from your hand face down. At the start of your next turn, put it into your hand."
 	},
 	{
 		"name": "Lighthouse",
@@ -3706,21 +3788,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Action, Now and at the start of your next turn: +1 Coin. - While this is in play, when another player plays an Attack card, it doesn&apos;t affect you."
 	},
 	{
 		"name": "Native Village",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+2 Actions, Choose one: Set aside the top card of your deck face down on your Native Village mat; or put all the cards from your mat into your hand. <br><br> You may look at the cards on your mat at any time; return them to your deck at the end of the game."
 	},
 	{
 		"name": "Pearl Diver",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Card, +1 Action, Look at the bottom card of your deck. You may put it on top."
 	},
 	{
 		"name": "Ambassador",
@@ -3728,7 +3816,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 3,
+		"description": "Reveal a card from your hand. Return up to 2 copies of it from your hand to the Supply. Then each other player gains a copy of it."
 	},
 	{
 		"name": "Fishing Village",
@@ -3736,28 +3826,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Actions, +1 Coin, At the start of your next turn: +1 Action, +1 Coin."
 	},
 	{
 		"name": "Lookout",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action, Look at the top 3 cards of your deck. Trash one of them. Discard one of them. Put the other one on top of your deck."
 	},
 	{
 		"name": "Smugglers",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "Gain a copy of a card costing up to 6 Coins that the player to your right gained on his last turn."
 	},
 	{
 		"name": "Warehouse",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+3 Card, +1 Action, Discard 3 cards."
 	},
 	{
 		"name": "Caravan",
@@ -3765,7 +3863,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card, +1 Action<br>At the start of your next turn, +1 Card."
 	},
 	{
 		"name": "Cutpurse",
@@ -3773,7 +3873,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Coins, Each other player discards a Copper card (or reveals a hand with no Copper)."
 	},
 	{
 		"name": "Island",
@@ -3781,14 +3883,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Victory"
-		]
+		],
+		"cost": 4,
+		"description": "Set aside this and another card from your hand. Return them to your deck at the end of the game.<hr>2 VP"
 	},
 	{
 		"name": "Navigator",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Coins, Look at the top 5 cards of your deck. Either discard all of them, or put them back on top of your deck in any order."
 	},
 	{
 		"name": "Pirate Ship",
@@ -3796,14 +3902,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "Choose one: Each other player reveals the top 2 cards of his deck, trashes a revealed Treasure that you choose, discards the rest, and if anyone trashed a Treasure you take a Coin token; or, +1 Coin per Coin token you&apos;ve taken with Pirate Ships this game."
 	},
 	{
 		"name": "Salvager",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy, Trash a card from your hand. +Coins equal to its cost."
 	},
 	{
 		"name": "Sea Hag",
@@ -3811,28 +3921,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "Each other player discards the top card of his deck, then gains a Curse card, putting it on top of his deck."
 	},
 	{
 		"name": "Treasure Map",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Trash this and another copy of Treasure Map from your hand. If you do trash two Treasure Maps, gain 4 Gold cards, putting them on top of your deck."
 	},
 	{
 		"name": "Bazaar",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +2 Actions, +1 Coin."
 	},
 	{
 		"name": "Explorer",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "You may reveal a Province card from your hand. If you do, gain a Gold card, putting it into your hand. Otherwise, gain a Silver card, putting it into your hand."
 	},
 	{
 		"name": "Ghost Ship",
@@ -3840,7 +3958,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Card, Each other player with 4 or more cards in hand puts cards from his hand on top of his deck until he has 3 cards in his hand."
 	},
 	{
 		"name": "Merchant Ship",
@@ -3848,7 +3968,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "Now and at the start of your next turn: +2 Coins."
 	},
 	{
 		"name": "Outpost",
@@ -3856,7 +3978,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "You only draw 3 cards (instead of 5) in this turn&apos;s Clean-up phase. Take an extra turn after this one. This can&apos;t cause you to take more than two consecutive turns."
 	},
 	{
 		"name": "Tactician",
@@ -3864,14 +3988,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "Discard your hand. If you discarded any cards this way, then at the start of your next turn, +5 Cards, +1 Buy, and +1 Action."
 	},
 	{
 		"name": "Treasury",
 		"set": "Seaside",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +1 Action, +1 Coin, When you discard this from play, if you didn&apos;t buy a Victory card this turn, you may put this on top of your deck."
 	},
 	{
 		"name": "Wharf",
@@ -3879,35 +4007,45 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "Now and at the start of your next turn: +2 Cards, +1 Buy."
 	},
 	{
 		"name": "Transmute",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": null,
+		"description": "Trash a card from your hand.<br>If it is an...<br>Action card, gain a Duchy<br>Treasure card, gain a Transmute<br>Victory card, gain a Gold"
 	},
 	{
 		"name": "Vineyard",
 		"set": "Alchemy",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": null,
+		"description": "Worth 1 Victory for every 3 Action cards in your deck (rounded down)."
 	},
 	{
 		"name": "Apothecary",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": null,
+		"description": "+1 Card<br>+1 Action<br><br>Reveal the top 4 cards of your deck. Put the revealed Coppers and Potions into your hand. Put the other cards back on top of your deck in any order."
 	},
 	{
 		"name": "Herbalist",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Buy<br>+1 Coin<br>When you discard this from play, you may put one of your Treasures from play on top of your deck."
 	},
 	{
 		"name": "Scrying Pool",
@@ -3915,21 +4053,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": null,
+		"description": "+1 Action<br>Each player (including you) reveals the top card of his deck and either discards it or puts it back, your choice. Then reveal cards from the top of your deck until revealing one that isn&apos;t an Action.<br>Put all of your revealed cards into your hand."
 	},
 	{
 		"name": "University",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": null,
+		"description": "+2 Actions<br>You may gain an Action card costing up to 5 Coins."
 	},
 	{
 		"name": "Alchemist",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": null,
+		"description": "+2 Cards<br>+1 Action<br>When you discard this from play, you may put this on top of your deck if you have a Potion in play."
 	},
 	{
 		"name": "Familiar",
@@ -3937,126 +4081,162 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": null,
+		"description": "+1 Card<br>+1 Action<br>Each other player gains a curse."
 	},
 	{
 		"name": "Philosopher's Stone",
 		"set": "Alchemy",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": null,
+		"description": "When you play this, count your deck and discard pile.<br>Worth 1 Coin per 5 cards total between them (rounded down)."
 	},
 	{
 		"name": "Golem",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": null,
+		"description": "Reveal cards from your deck until you reveal 2 Action cards other than Golem Cards.<br>Discard the other cards, then play the Action cards in either order."
 	},
 	{
 		"name": "Potion",
 		"set": "Alchemy",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 4,
+		"description": "Worth 1 Potion."
 	},
 	{
 		"name": "Apprentice",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action<br>Trash a card from your hand.<br>+1 Card per Coin it costs.<br>+2 Cards if it has Potion in its cost."
 	},
 	{
 		"name": "Possession",
 		"set": "Alchemy",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": null,
+		"description": "The player to your left takes an extra turn after this one, in which you can see all cards he can and make all decisions for him.<br>Any cards he would gain on that turn, you gain instead; any cards of his that are trashed are set aside and returned to his discard pile at end of turn."
 	},
 	{
 		"name": "Loan",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 3,
+		"description": "Worth 1 Coin.<br>When you play this, reveal cards from your deck until you reveal a Treasure. Discard it or trash it. Discard the other cards."
 	},
 	{
 		"name": "Trade Route",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Buy<br>+1 Coin per token on the Trade Route mat.<br>Trash a card from your hand.<hr>Setup: Put a token on each Victory card Supply pile. When a card is gained from that pile, move the token to the Trade Route mat."
 	},
 	{
 		"name": "Watchtower",
 		"set": "Prosperity",
 		"type": [
 			"Reaction"
-		]
+		],
+		"cost": 3,
+		"description": "Draw until you have 6 cards in hand.<hr>When you gain a card, you may reveal this from your hand. If you do, either trash that card, or put it on top of your deck."
 	},
 	{
 		"name": "Bishop",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Coin<br>+1 &lt;VP&gt;<br>Trash a card from your hand. +&lt;VP&gt; equal to half its cost in Coins, rounded down.<br>Each other player may trash a card from his hand."
 	},
 	{
 		"name": "Monument",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Coins; +1 &lt;VP&gt;"
 	},
 	{
 		"name": "Quarry",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 4,
+		"description": "Worth 1 Coin.<hr>While this is in play, Action cards cost 2 Coins less, but not less than 0 Coins."
 	},
 	{
 		"name": "Talisman",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 4,
+		"description": "Worth 1 Coin.<hr>While this is in play, when you buy a card costing 4 Coins or less that is not a Victory card, gain a copy of it."
 	},
 	{
 		"name": "Worker's Village",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+2 Actions<br>+1 Buy"
 	},
 	{
 		"name": "City",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+2 Actions<br>If there are one or more empty Supply piles, +1 Card. If there are two or more, +1 Coin and +1 Buy."
 	},
 	{
 		"name": "Contraband",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 3 Coins.<br>+1 Buy<br>When you play this, the player to your left names a card. You can&apos;t buy that card this turn."
 	},
 	{
 		"name": "Counting House",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Look through your discard pile, reveal any number of Copper cards from it, and put them into your hand."
 	},
 	{
 		"name": "Mint",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "You may reveal a Treasure card from your hand. Gain a copy of it.<hr>When you buy this, trash all Treasures you have in play."
 	},
 	{
 		"name": "Mountebank",
@@ -4064,7 +4244,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Coins<br>Each other player may discard a Curse. If he doesn&apos;t, he gains a Curse and a Copper."
 	},
 	{
 		"name": "Rabble",
@@ -4072,28 +4254,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+3 Cards<br>Each other player reveals the top 3 cards of his deck, discards the revealed Actions and Treasures, and puts the rest back on top in any order he chooses."
 	},
 	{
 		"name": "Royal Seal",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 2 Coins.<hr>While this is in play, when you gain a card, you may put that card on top of your deck."
 	},
 	{
 		"name": "Vault",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards<br>Discard any number of cards. +1 Coin per card discarded.<br>Each other player may discard 2 cards. If he does, he draws a card."
 	},
 	{
 		"name": "Venture",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 1 Coin.<br>When you play this, reveal cards from your deck until you reveal a Treasure. Discard the other cards. Play that Treasure."
 	},
 	{
 		"name": "Goons",
@@ -4101,70 +4291,90 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 6,
+		"description": "+1 Buy<br>+2 Coins<br>Each other player discards down to 3 cards in hand.<hr>While this is in play, when you buy a card, +1 &lt;VP&gt;."
 	},
 	{
 		"name": "Grand Market",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 6,
+		"description": "+1 Card<br>+1 Action<br>+1 Buy<br>+2 Coins<hr>You can&apos;t buy this if you have any Copper in play."
 	},
 	{
 		"name": "Hoard",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 6,
+		"description": "Worth 2 Coins.<hr>While this is in play, when you buy a Victory card, gain a Gold."
 	},
 	{
 		"name": "Bank",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 7,
+		"description": "Worth ? Coins.<br>When you play this, it`s worth 1 Coin per Treasure card you have in play (counting this)."
 	},
 	{
 		"name": "Expand",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 7,
+		"description": "Trash a card from your hand. Gain a card costing up to 3 Coins more than the trashed card."
 	},
 	{
 		"name": "Forge",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 7,
+		"description": "Trash any number of cards from your hand. Gain a card with cost exactly equal to the total cost in Coins of the trashed cards."
 	},
 	{
 		"name": "King's Court",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 7,
+		"description": "You may choose an Action card in your hand. Play it three times."
 	},
 	{
 		"name": "Peddler",
 		"set": "Prosperity",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 8,
+		"description": "+1 Card; +1 Action; +1 Coin<hr>During your Buy phase, this costs 2 Coins less per Action card you have in play, but not less than 0 Coins."
 	},
 	{
 		"name": "Platinum",
 		"set": "Prosperity",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 9,
+		"description": "5 Coins."
 	},
 	{
 		"name": "Colony",
 		"set": "Prosperity",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 11,
+		"description": "10 &lt;VP&gt;."
 	},
 	{
 		"name": "Bag of Gold",
@@ -4172,7 +4382,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Prize"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Action<br>Gain a Gold, putting it on top of your deck.<br>(This is not in the Supply.)"
 	},
 	{
 		"name": "Diadem",
@@ -4180,7 +4392,9 @@ module.exports = [
 		"type": [
 			"Treasure",
 			"Prize"
-		]
+		],
+		"cost": 0,
+		"description": "Worth 2 Coins.<br>When you play this, +1 Coin per unused Action you have (Action, not Action card).<br>(This is not in the Supply.)"
 	},
 	{
 		"name": "Followers",
@@ -4189,7 +4403,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Prize"
-		]
+		],
+		"cost": 0,
+		"description": "+2 Cards<br>Gain an Estate. Each other player gains a Curse and discards down to 3 cards in hand.<br>(This is not in the Supply.)"
 	},
 	{
 		"name": "Princess",
@@ -4197,7 +4413,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Prize"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Buy<hr>While this is in play, cards cost 2 Coins less, but not less than 0 Coins.<br>(This is not in the Supply.)"
 	},
 	{
 		"name": "Trusty Steed",
@@ -4205,14 +4423,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Prize"
-		]
+		],
+		"cost": 0,
+		"description": "Choose two: +2 Cards; +2 Actions; +2 Coins; gain 4 Silvers and put your deck into your discard pile.<br>(The choices must be different)<br><br>(This is not in the Supply.)"
 	},
 	{
 		"name": "Hamlet",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Card<br>+1 Action<br><br>You may discard a card; If you do, +1 Action.<br>You may discard a card; If you do, +1 Buy."
 	},
 	{
 		"name": "Fortune Teller",
@@ -4220,21 +4442,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Coins<br>Each other player reveals cards from the top of his deck until he reveals a Victory or Curse card. He puts it on top and discards the other revealed cards."
 	},
 	{
 		"name": "Menagerie",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action<br>Reveal your hand.<br>If there are no duplicate cards in it, +3 Cards.<br>Otherwise, +1 Card."
 	},
 	{
 		"name": "Farming Village",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Actions<br>Reveal cards from the top of your deck until you reveal an Action or Treasure card. Put that card into your hand and discard the other cards."
 	},
 	{
 		"name": "Horse Traders",
@@ -4242,21 +4470,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reaction"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy<br>+3 Coins<br>Discard 2 Cards<hr>When another player plays an Attack card, you may set this aside from your hand. If you do, then at the start of your next turn, +1 Card and return this to your hand."
 	},
 	{
 		"name": "Remake",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Do this twice: Trash a card from your hand, then gain a card costing exactly 1 Coin more than the trashed card."
 	},
 	{
 		"name": "Tournament",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Action<br>Each player may reveal a Province from his hand. If you do, discard it and gain a Prize (from the Prize pile) or a Duchy, putting it on top of your deck. If no-one else does, +1 Card +1 Coin."
 	},
 	{
 		"name": "Young Witch",
@@ -4264,28 +4498,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Cards<br><br>Discard 2 cards. Each other player may reveal a Bane card from his hand.<br>If he doesn&#xFFFD;t, he gains a Curse.<hr>Setup: Add an extra Kingdom card pile costing 2 Coins or 3 Coins to the Supply. Cards from that pile are Bane cards."
 	},
 	{
 		"name": "Harvest",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Reveal the top 4 cards of your deck, then discard them. +1 Coin per differently named card revealed."
 	},
 	{
 		"name": "Horn of Plenty",
 		"set": "Cornucopia",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "0 Coins<br>When you play this, gain a card costing up to 1 Coin per differently named card you have in play, counting this. If it&#xFFFD;s a Victory card, trash this."
 	},
 	{
 		"name": "Hunting Party",
 		"set": "Cornucopia",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<br>Reveal your hand. Reveal cards from your deck until you reveal a card that isn&#xFFFD;t a duplicate of one in your hand. Put it into your hand and discard the rest."
 	},
 	{
 		"name": "Jester",
@@ -4293,28 +4535,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Coins<br>Each other player discards the top card of his deck. If it&#xFFFD;s a Victory card he gains a Curse. Otherwise he gains a copy of the discarded card or you do, your choice."
 	},
 	{
 		"name": "Fairgrounds",
 		"set": "Cornucopia",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 6,
+		"description": "Worth 2 VP for every 5 differently named cards in your deck (rounded down)"
 	},
 	{
 		"name": "Crossroads",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "Reveal your hand.<br>+1 Card per Victory card revealed. If this is the first time you played a Crossroads this turn, +3 Actions."
 	},
 	{
 		"name": "Duchess",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+2 Coins<br>Each player (including you) looks at the top card of his deck, and discards it or puts it back.<hr>In games using this, when you gain a Duchy, you may gain a Duchess."
 	},
 	{
 		"name": "Fool's Gold",
@@ -4322,21 +4572,27 @@ module.exports = [
 		"type": [
 			"Treasure",
 			"Reaction"
-		]
+		],
+		"cost": 2,
+		"description": "If this is the first time you played a Fool&apos;s Gold this turn, this is worth 1 Coin, otherwise it&apos;s worth 4 Coins.<hr>When another player gains a Province, you may trash this from your hand. If you do, gain a Gold, putting it on your deck."
 	},
 	{
 		"name": "Develop",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "Trash a card from your hand. Gain a card costing exactly 1 Coin more than it and a card costing exactly 1 less than it, in either order, putting them on top of your deck."
 	},
 	{
 		"name": "Oasis",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card<br>+1 Action<br>+1 Coin<br>Discard a card."
 	},
 	{
 		"name": "Oracle",
@@ -4344,14 +4600,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 3,
+		"description": "Each player (including you) reveals the top 2 cards of his deck, and you choose one: either he discards them, or he puts them back on top in an order he chooses.<br>+2 Cards"
 	},
 	{
 		"name": "Scheme",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card<br>+1 Action<br>At the start of Clean-up this turn, you may choose an Action card you have in play. If you discard it from play this turn, put it on your deck."
 	},
 	{
 		"name": "Tunnel",
@@ -4359,14 +4619,18 @@ module.exports = [
 		"type": [
 			"Victory",
 			"Reaction"
-		]
+		],
+		"cost": 3,
+		"description": "2 VP [large shield]<hr>When you discard this other than during a Clean-up phase, you may reveal it. If you do, gain a Gold."
 	},
 	{
 		"name": "Jack of all Trades",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Gain a Silver.<br>Look at the top card of your deck; discard it or put it back.<br>Draw until you have 5 cards in hand.<br>You may trash a card from your hand that is not a Treasure."
 	},
 	{
 		"name": "Noble Brigand",
@@ -4374,28 +4638,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Coin<br>When you buy this or play it, each other player reveals the top 2 cards of his deck, trashes a revealed Silver or Gold you choose, and discards the rest. If he didn&apos;t reveal a Treasure, he gains a Copper. You gain the trashed cards."
 	},
 	{
 		"name": "Nomad Camp",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy<br>+2 Coins<hr>When you gain this, put it on top of your deck."
 	},
 	{
 		"name": "Silk Road",
 		"set": "Hinterlands",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 4,
+		"description": "Worth 1 VP for every 4 Victory cards in your deck (round down)."
 	},
 	{
 		"name": "Spice Merchant",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "You may trash a Treasure from your hand. If you do, choose one:<br>+2 Cards and +1 Action;<br>or +2 Coins and +1 Buy."
 	},
 	{
 		"name": "Trader",
@@ -4403,63 +4675,81 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reaction"
-		]
+		],
+		"cost": 4,
+		"description": "Trash a card from your hand. Gain a number of Silvers equal to its cost in Coins.<hr>When you would gain a card, you may reveal this from your hand. If you do, instead, gain a silver."
 	},
 	{
 		"name": "Cache",
 		"set": "Hinterlands",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 3 Coins<hr>When you gain this, gain two Coppers."
 	},
 	{
 		"name": "Cartographer",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<br>Look at the top 4 cards of your deck. Discard any number of them. Put the rest back on top in any order."
 	},
 	{
 		"name": "Embassy",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+5 Cards<br>Discard 3 cards.<hr>When you gain this, each other player gains a Silver."
 	},
 	{
 		"name": "Haggler",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Coins<hr>While this is in play, when you buy a card, gain a card costing less than it that is not a Victory card."
 	},
 	{
 		"name": "Highway",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<hr>While this is in play, cards cost 1 Coin less, but not less than 0 Coins."
 	},
 	{
 		"name": "Ill-Gotten Gains",
 		"set": "Hinterlands",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 1 Coin<br>When you play this, you may gain a Copper, putting it into your hand.<hr>When you gain this, each other player gains a Curse."
 	},
 	{
 		"name": "Inn",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards<br>+2 Actions<br>Discard 2 cards.<hr>When you gain this, look through your discard pile (including this), reveal any number of Action cards from it, and shuffle them into your deck."
 	},
 	{
 		"name": "Mandarin",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+3 Coins<br>Put a card from your hand on top of your deck.<hr>When you gain this, put all Treasures you have in play on top of your deck in any order."
 	},
 	{
 		"name": "Margrave",
@@ -4467,28 +4757,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+3 Cards<br>+1 Buy<br>Each other player draws a card, then discards down to 3 cards in hand."
 	},
 	{
 		"name": "Stables",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "You may discard a Treasure. If you do, +3 Cards and +1 Action."
 	},
 	{
 		"name": "Border Village",
 		"set": "Hinterlands",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 6,
+		"description": "+1 Card<br>+2 Actions<hr>When you gain this, gain a card costing less than this."
 	},
 	{
 		"name": "Farmland",
 		"set": "Hinterlands",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 6,
+		"description": "2 VP<hr>When you buy this, trash a card from your hand. Gain a card costing exactly 2 Coins more than the trashed card."
 	},
 	{
 		"name": "Abandoned Mine",
@@ -4496,14 +4794,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Ruins"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Coin"
 	},
 	{
 		"name": "Madman",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 0,
+		"description": "+2 Actions<br>Return this to the Madman pile. If you do, +1 Card per card in your hand.<br><i>(This card is not in the supply.)</i>"
 	},
 	{
 		"name": "Mercenary",
@@ -4511,7 +4813,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 0,
+		"description": "You may trash 2 cards from your hand. If you do, +2 Cards, +2 Coins, and each other player discards down to 3 cards in hand. <i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Ruined Library",
@@ -4519,7 +4823,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Ruins"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Card"
 	},
 	{
 		"name": "Ruined Market",
@@ -4527,7 +4833,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Ruins"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Buy"
 	},
 	{
 		"name": "Ruined Village",
@@ -4535,14 +4843,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Ruins"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Action"
 	},
 	{
 		"name": "Spoils",
 		"set": "Dark Ages",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 0,
+		"description": "3 Coins<br>When you play this, return it to the Spoils pile.<br><i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Survivors",
@@ -4550,7 +4862,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Ruins"
-		]
+		],
+		"cost": 0,
+		"description": "Look at the top 2 cards of your deck. Discard them or put them back in any order."
 	},
 	{
 		"name": "Hovel",
@@ -4558,7 +4872,9 @@ module.exports = [
 		"type": [
 			"Reaction",
 			"Shelter"
-		]
+		],
+		"cost": 1,
+		"description": "When you buy a Victory card, you may trash this from your hand."
 	},
 	{
 		"name": "Necropolis",
@@ -4566,7 +4882,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Shelter"
-		]
+		],
+		"cost": 1,
+		"description": "+2 Actions"
 	},
 	{
 		"name": "Overgrown Estate",
@@ -4574,14 +4892,18 @@ module.exports = [
 		"type": [
 			"Victory",
 			"Shelter"
-		]
+		],
+		"cost": 1,
+		"description": "0 Victory<hr>When you trash this, +1 Card."
 	},
 	{
 		"name": "Poor House",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 1,
+		"description": "+4 Coins<br>Reveal your hand. -1 Coin per Treasure card in your hand, to a minimum of 0 Coins."
 	},
 	{
 		"name": "Beggar",
@@ -4589,35 +4911,45 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reaction"
-		]
+		],
+		"cost": 2,
+		"description": "Gain 3 Coppers, putting them into your hand.<hr>When another player plays an Attack card, you may discard this. If you do, gain two Silvers, putting one on top of your deck."
 	},
 	{
 		"name": "Squire",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Coin<br>Choose one: +2 Actions; or +2 Buys; or gain a Silver.<hr>When you trash this, gain an Attack card."
 	},
 	{
 		"name": "Vagrant",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Card, +1 Action<br>Reveal the top card of your deck. If it&apos;s a Curse, Ruins, Shelter, or Victory card, put it into your hand."
 	},
 	{
 		"name": "Forager",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action, +1 Buy<br>Trash a card from your hand. +1 Coin per differently named Treasure in the trash."
 	},
 	{
 		"name": "Hermit",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "Look through your discard pile. You may trash a card from your discard pile or hand that is not a Treasure. Gain a card costing up to 3 Coins.<hr>When you discard this from play, if you did not buy any cards this turn, trash this and gain a Madman from the Madman pile."
 	},
 	{
 		"name": "Market Square",
@@ -4625,21 +4957,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reaction"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card, +1 Action, +1 Buy<hr>When one of your cards is trashed, you may discard this from your hand. If you do, gain a Gold."
 	},
 	{
 		"name": "Sage",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action<br>Reveal cards from the top of your deck until you reveal one costing 3 Coins or more. Put that card into your hand and discard the rest."
 	},
 	{
 		"name": "Storeroom",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Buy<br>Discard any number of cards. +1 Card per card discarded. Discard any number of cards. +1 Coin per card discarded the second time."
 	},
 	{
 		"name": "Urchin",
@@ -4647,14 +4985,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card, +1 Action<br>Each other player discards down to 4 cards in hand.<hr>When you play another Attack card with this in play, you may trash this. If you do, gain a mercenary from the Mercenary pile."
 	},
 	{
 		"name": "Armory",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Gain a card costing up to 4 Coins, putting it on top of your deck."
 	},
 	{
 		"name": "Death Cart",
@@ -4662,28 +5004,36 @@ module.exports = [
 		"type": [
 			"Action",
 			"Looter"
-		]
+		],
+		"cost": 4,
+		"description": "+5 Coins<br>You may trash an Action card from your hand. If you don&apos;t, trash this.<hr>When you gain this, gain 2 Ruins."
 	},
 	{
 		"name": "Feodum",
 		"set": "Dark Ages",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 4,
+		"description": "Worth 1 Victory for every 3 Silvers in your deck (round down).<hr>When you trash this, gain 3 Silvers."
 	},
 	{
 		"name": "Fortress",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card, +2 Actions<hr>When you trash this, put it into your hand."
 	},
 	{
 		"name": "Ironmonger",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card, +1 Action<br>Reveal the top card of your deck; you may discard it. Either way, if it is an&#xFFFD;<br>Action card, +1 Action<br>Treasure card, +1 Coin<br>Victory card, +1 Card"
 	},
 	{
 		"name": "Marauder",
@@ -4692,28 +5042,36 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Looter"
-		]
+		],
+		"cost": 4,
+		"description": "Gain a Spoils from the Spoils pile. Each other player gains a Ruins."
 	},
 	{
 		"name": "Procession",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "You may play an Action card from your hand twice. Trash it. Gain an Action card costing exactly 1 Coin more than it."
 	},
 	{
 		"name": "Rats",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card, +1 Action<br>Gain a Rats. Trash a card from your hand other than a Rats (or reveal a hand of all Rats).<hr>When you tash this, +1 Card."
 	},
 	{
 		"name": "Scavenger",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Coins<br>You may put your deck into your discard pile. Look through your discard pile and put one card from it on top of your deck."
 	},
 	{
 		"name": "Sir Martin",
@@ -4722,49 +5080,63 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Buys<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Wandering Minstrel",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card, +2 Actions<br>Reveal the top 3 cards of your deck. Put the Actions back on top in any order and discard the rest."
 	},
 	{
 		"name": "Band of Misfits",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Play this as if it were an Action card in the Supply costing less than it that you choose.<br>This is that card until it leaves play."
 	},
 	{
 		"name": "Bandit Camp",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +2 Actions<br>Gain a Spoils from the Spoils pile."
 	},
 	{
 		"name": "Catacombs",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Look at the top 3 cards of your deck. Choose one: Put them into your hand; or discard them and +3 Cards.<hr>When you trash this, gain a cheaper card."
 	},
 	{
 		"name": "Count",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Choose one: Discard 2 cards; or put a card from your hand on top of your deck; or gain a Copper.<br>Choose one: +3 Coins; or trash your hand; or gain a Duchy."
 	},
 	{
 		"name": "Counterfeit",
 		"set": "Dark Ages",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "1 Coin<br>+1 Buy<br>When you play this, you may play a Treasure from your hand twice. If you do, trash that Treasure."
 	},
 	{
 		"name": "Cultist",
@@ -4773,7 +5145,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Looter"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards<br>Each other player gains a Ruins. You may play a Cultist from your hand.<hr>When you trash this, +3 Cards."
 	},
 	{
 		"name": "Dame Anna",
@@ -4782,7 +5156,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "You may trash up to 2 cards from your hand.<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Dame Josephine",
@@ -4792,7 +5168,9 @@ module.exports = [
 			"Attack",
 			"Knight",
 			"Victory"
-		]
+		],
+		"cost": 5,
+		"description": "2 Victory<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Dame Molly",
@@ -4801,7 +5179,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Actions<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Dame Natalie",
@@ -4810,7 +5190,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "You may gain a card costing up to 3 Coins.<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Dame Sylvia",
@@ -4819,28 +5201,36 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Coins<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Graverobber",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Choose one: Gain a card from the trash costing from 3 Coins to 6 Coins, putting it on top of your deck; or trash an Action card from your hand and gain a card costing up to 3 Coins more than it."
 	},
 	{
 		"name": "Junk Dealer",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +1 Action, +1 Coin<br>Trash a card from your hand."
 	},
 	{
 		"name": "Mystic",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action, +2 Coins<br>Name a card. Reveal the top card of your deck. If it&apos;s the named card, put it into your hand."
 	},
 	{
 		"name": "Pillage",
@@ -4848,14 +5238,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "Trash this. Each other player with 5 or more cards in hand reveals his hand and discards a card that you choose.<br>Gain 2 Spoils from the Spoils pile."
 	},
 	{
 		"name": "Rebuild",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action<br><br>Name a card. Reveal cards from the top of your deck until you reveal a Victory card that is not the named card. Discard the other cards. Trash the Victory card and gain a Victory card costing up to 3 Coins more than it."
 	},
 	{
 		"name": "Rogue",
@@ -4863,7 +5257,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Coins<br>If there are any cards in the trash costing from 3 Coins to 6 Coins, gain one of them. Otherwise, each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest."
 	},
 	{
 		"name": "Sir Bailey",
@@ -4872,7 +5268,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card, +1 Action<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Sir Destry",
@@ -4881,7 +5279,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Sir Michael",
@@ -4890,7 +5290,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "Each other player discards down to 3 cards in hand.<br>Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card."
 	},
 	{
 		"name": "Sir Vander",
@@ -4899,70 +5301,90 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Knight"
-		]
+		],
+		"cost": 5,
+		"description": "Each other player reveals the top 2 cards of his deck, trashes one of them costing from 3 Coins to 6 Coins, and discards the rest. If a Knight is trashed by this, trash this card.<hr>When you trash this, gain a Gold."
 	},
 	{
 		"name": "Altar",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 6,
+		"description": "Trash a card from your hand. Gain a card costing up to 5 Coins."
 	},
 	{
 		"name": "Hunting Grounds",
 		"set": "Dark Ages",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 6,
+		"description": "+4 Cards<hr>When you trash this, gain a Duchy or 3 Estates."
 	},
 	{
 		"name": "Candlestick Maker",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Action, +1 Buy<br> Take a Coin token."
 	},
 	{
 		"name": "Stonemason",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "Trash a card from your hand. Gain 2 cards each costing less than it.<hr>When you buy this, you may overpay for it.<br>If you do, gain 2 Action cards each costing the amount you overpaid."
 	},
 	{
 		"name": "Doctor",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "Name a card. Reveal the top 3 cards of your deck. Trash the matches. Put the rest back on top in any order.<hr>When you buy this, you may overpay for it. For each 1 Coin you overpaid, look at the top card of your deck; trash it, discard it, or put it back."
 	},
 	{
 		"name": "Masterpiece",
 		"set": "Guilds",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 3,
+		"description": "1 Coin<hr>When you buy this, you may overpay for it. If you do, gain a Silver per 1 Coin you overpaid."
 	},
 	{
 		"name": "Advisor",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Action<br>Reveal the top 3 cards of your deck. The player to your left chooses one of them. Discard that card. Put the other cards into your hand."
 	},
 	{
 		"name": "Herald",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+1 Action<br>Reveal the top card of your deck. If it is an Action, play it.<hr>When you buy this, you may overpay for it. For each 1 Coin you overpaid, look through your discard pile and put a card from it on top of your deck."
 	},
 	{
 		"name": "Plaza",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+2 Actions<br>You may discard a Treasure card. If you do, take a Coin token."
 	},
 	{
 		"name": "Taxman",
@@ -4970,35 +5392,45 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 4,
+		"description": "You may trash a Treasure from your hand. Each other player with 5 or more cards in hand discards a copy of it (or reveals a hand without it). Gain a Treasure card costing up to 3 Coins more than the trashed card, putting it on top of your deck."
 	},
 	{
 		"name": "Baker",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<br>Take a Coin token.<hr>Setup: Each player takes a Coin token."
 	},
 	{
 		"name": "Butcher",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Take 2 Coin tokens. You may trash a card from your hand and then pay any number of Coin tokens. If you did trash a card, gain a card with a cost of up to the cost of the trashed card plus the number of Coin tokens you paid."
 	},
 	{
 		"name": "Journeyman",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "Name a card. Reveal cards from the top of your deck until you reveal 3 cards that are not the named card. Put those cards into your hand and discard the rest."
 	},
 	{
 		"name": "Merchant Guild",
 		"set": "Guilds",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Buy<br>+1 Coin<hr>While this is in play, when you buy a card, take a Coin token."
 	},
 	{
 		"name": "Soothsayer",
@@ -5006,7 +5438,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "Gain a gold. Each other player gains a Curse. Each player who did draws a card."
 	},
 	{
 		"name": "Coin of the Realm",
@@ -5014,7 +5448,9 @@ module.exports = [
 		"type": [
 			"Treasure",
 			"Reserve"
-		]
+		],
+		"cost": 2,
+		"description": "1 Coin<br>When you play this, put it on your Tavern mat.<hr>Directly after resolving an Action, you may call this, for +2 Actions."
 	},
 	{
 		"name": "Page",
@@ -5022,7 +5458,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Traveller"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Card<br>+1 Action<hr>When you discard this from play, you may exchange it for a Treasure Hunter."
 	},
 	{
 		"name": "Peasant",
@@ -5030,7 +5468,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Traveller"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Buy<br>+1 Coin<hr>When you discard this from play, you may exchange it for a Soldier."
 	},
 	{
 		"name": "Ratcatcher",
@@ -5038,14 +5478,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Card<br>+1 Action<br>Put this on your Tavern mat.<hr>At the start of your turn, you may call this, to trash a card from your hand."
 	},
 	{
 		"name": "Raze",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Action<br>Trash this or a card from your hand. Look at a number of cards from the top of your deck equal to the cost in Coins of the trashed card. Put one into your hand and discard the rest."
 	},
 	{
 		"name": "Amulet",
@@ -5053,7 +5497,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 3,
+		"description": "Now and at the start of your next turn, choose one: +1 Coin; or trash a card from your hand; or gain a Silver."
 	},
 	{
 		"name": "Caravan Guard",
@@ -5062,7 +5508,9 @@ module.exports = [
 			"Action",
 			"Duration",
 			"Reaction"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card<br>+1 Action<br>At the start of your next turn, +1 Coin.<hr>When another player plays an Attack card, you may play this from your hand. <i>(+1 Action has no effect if it&apos;s not your turn.)</i>"
 	},
 	{
 		"name": "Dungeon",
@@ -5070,7 +5518,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action<br>Now and at the start of your next turn: +2 Cards, then discard 2 cards."
 	},
 	{
 		"name": "Gear",
@@ -5078,7 +5528,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Cards<br>Set aside up to 2 cards from your hand face down. At the start of your next turn, put them into your hand."
 	},
 	{
 		"name": "Guide",
@@ -5086,7 +5538,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card<br>+1 Action<br>Put this on your Tavern mat.<hr>At the start of your turn, you may call this, to discard your hand and draw 5 cards."
 	},
 	{
 		"name": "Duplicate",
@@ -5094,42 +5548,54 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 4,
+		"description": "Put this on your Tavern mat.<hr>When you gain a card costing up to 6 Coins, you may call this, to gain a copy of that card."
 	},
 	{
 		"name": "Magpie",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+1 Action<br>Reveal the top card of your deck. If it&apos;s a Treasure, put it into your hand. If it&apos;s an Action or Victory card, gain a Magpie."
 	},
 	{
 		"name": "Messenger",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy<br>+2 Coins<br>You may put your deck into your discard pile.<hr>When this is your first buy in a turn, gain a card costing up to 4 Coins, and each other player gains a copy of it."
 	},
 	{
 		"name": "Miser",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Choose one: Put a Copper from your hand onto your Tavern mat; or +1 Coin per Copper on your Tavern mat."
 	},
 	{
 		"name": "Port",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+2 Actions<hr>When you buy this, gain another Port."
 	},
 	{
 		"name": "Ranger",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Buy<br>Turn your Journey token over (it starts face up). If it&apos;s face up, +5 Cards."
 	},
 	{
 		"name": "Transmogrify",
@@ -5137,14 +5603,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Action<br>Put this on your Tavern mat.<hr>At the start of your turn, you may call this, to trash a card from your hand, gain a card costing up to 1 Coin more than it, and put that card into your hand."
 	},
 	{
 		"name": "Artificer",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<br>+1 Coin<br>Discard any number of cards. You may gain a card costing exactly 1 Coin per card discarded, putting it on top of your deck."
 	},
 	{
 		"name": "Bridge Troll",
@@ -5152,7 +5622,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "Each other player takes his -1 Coin token. Now and at the start of your next turn:<br>+1 Buy<hr>While this is in play, cards cost 1 Coin less on your turns, but not less than 0 Coins."
 	},
 	{
 		"name": "Distant Lands",
@@ -5161,7 +5633,9 @@ module.exports = [
 			"Action",
 			"Reserve",
 			"Victory"
-		]
+		],
+		"cost": 5,
+		"description": "Put this on your Tavern mat.<hr>Worth 4 Victory if on your Tavern mat at the end of the game (otherwise worth 0 Victory)."
 	},
 	{
 		"name": "Giant",
@@ -5169,7 +5643,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "Turn your Journey token over (it starts face up). If it&apos;s face down, +1 Coin. If it&apos;s face up, +5 Coins, and each other player reveals the top card of his deck, trashes it if it costs from 3 Coins to 6 Coins, and otherwise discards it and gains a Curse."
 	},
 	{
 		"name": "Haunted Woods",
@@ -5178,14 +5654,18 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "Until your next turn, when any other player buys a card, he puts his hand on top of his deck in any order.<br>At the start of your next turn:<br>+3 Cards"
 	},
 	{
 		"name": "Lost City",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Cards<br>+2 Actions<hr>When you gain this, each other player draws a card."
 	},
 	{
 		"name": "Relic",
@@ -5193,7 +5673,9 @@ module.exports = [
 		"type": [
 			"Treasure",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "2 Coins<br>When you play this, each other player puts his -1 Card token on his deck."
 	},
 	{
 		"name": "Royal Carriage",
@@ -5201,14 +5683,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action<br>Put this on your Tavern mat.<hr>Directly after resolving an Action, if it&apos;s still in play, you may call this, to replay that Action."
 	},
 	{
 		"name": "Storyteller",
 		"set": "Adventures",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action<br>+1 Coin<br>Play up to 3 Treasures from your hand. Pay all of your Coins; +1 Card per Coin paid."
 	},
 	{
 		"name": "Swamp Hag",
@@ -5217,14 +5703,18 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "Until your next turn, when any other player buys a card, he gains a Curse.<br>At the start of your next turn:<br>+3 Coins"
 	},
 	{
 		"name": "Treasure Trove",
 		"set": "Adventures",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "2 Coins<br>When you play this, gain a Gold and a Copper."
 	},
 	{
 		"name": "Wine Merchant",
@@ -5232,7 +5722,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Buy<br>+4 Coins<br>Put this on your Tavern mat.<hr>At the end of your Buy phase, if you have at least 2 Coins unspent, you may discard this from your Tavern mat."
 	},
 	{
 		"name": "Hireling",
@@ -5240,7 +5732,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 6,
+		"description": "At the start of each of your turns for the rest of the game:<br>+1 Card<br><i>(This stays in play.)</i>"
 	},
 	{
 		"name": "Soldier",
@@ -5249,7 +5743,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Traveller"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Coins<br>+1 Coin per other Attack you have in play. Each other player with 4 or more cards in hand discards a card.<hr>When you discard this from play, you may exchange it for a Fugitive.<br><i>This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Fugitive",
@@ -5257,7 +5753,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Traveller"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Cards<br>+1Action<br>Discard a card.<hr>When you discard this from play, you may exchange it for a Disciple.<br><i>(This card is not in the Supply.)</i>"
 	},
 	{
 		"name": "Disciple",
@@ -5265,7 +5763,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Traveller"
-		]
+		],
+		"cost": 5,
+		"description": "You may play an Action card from your hand twice. Gain a copy of it.<hr>When you discard this from play, you may exchange it for a Teacher.<br><i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Teacher",
@@ -5273,7 +5773,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Reserve"
-		]
+		],
+		"cost": 6,
+		"description": "Put this on your Tavern mat.<hr>At the start of your turn, you may call this, to move your +1 Card, +1 Action, +1 Buy, or +1 Coin token to an Action Supply pile you have no tokens on (when you play a card from that pile, you first get that bonus).<br><i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Treasure Hunter",
@@ -5281,7 +5783,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Traveller"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action<br>+1 Coin<br>Gain a Silver per card the player to your right gained in his last turn.<hr>When you discard this from play, you may exchange it for a Warrior.<br><i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Warrior",
@@ -5290,7 +5794,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Traveller"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Cards<br>For each Traveller you have in play (including this), each other player discards the top card of his deck and trashes it if it costs 3 Coins or 4 Coins.<hr>When you discard this from play, you may exchange it for a Hero.<br><i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Hero",
@@ -5298,7 +5804,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Traveller"
-		]
+		],
+		"cost": 5,
+		"description": "+2 Coins<br>Gain a Treasure.<hr>When you discard this from play, you may exchange it for a Champion.<br><i>(This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Champion",
@@ -5306,196 +5814,252 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 6,
+		"description": "+1 Action<br>For the rest of the game, when another player plays an Attack, it doesn&apos;t affect you, and when you play an Action, +1 Action.<br><i>(This stays in play. This is not in the Supply.)</i>"
 	},
 	{
 		"name": "Alms",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "Once per turn: If you have no Treasures in play, gain a card costing up to 4 Coins."
 	},
 	{
 		"name": "Borrow",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "+1 Buy<br>Once per turn: If your -1 Card token isn&apos;t on your deck, put it there and +1 Coin."
 	},
 	{
 		"name": "Quest",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "You may discard an Attack, two Curses, or six cards. If you do, gain a Gold."
 	},
 	{
 		"name": "Save",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 1,
+		"description": "+1 Buy<br>Once per turn: Set aside a card from your hand, and put it into your hand at end of turn (after drawing)."
 	},
 	{
 		"name": "Scouting Party",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 2,
+		"description": "+1 Buy<br>Look at the top 5 cards of your deck. Discard 3 of them and put the rest back in any order."
 	},
 	{
 		"name": "Travelling Fair",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 2,
+		"description": "+2 Buys<br>When you gain a card this turn, you may put it on top of your deck."
 	},
 	{
 		"name": "Bonfire",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 3,
+		"description": "Trash up to 2 cards you have in play."
 	},
 	{
 		"name": "Expedition",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 3,
+		"description": "Draw 2 extra cards for your next hand."
 	},
 	{
 		"name": "Ferry",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 3,
+		"description": "Move your -2 Coins cost token to an Action Supply pile (cards from that pile cost 2 Coins less on your turns, but  not less than 0 Coins)."
 	},
 	{
 		"name": "Plan",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 3,
+		"description": "Move your Trashing token to an Action supply pile (when you buy a card from that pile, you may trash a card from your hand.)"
 	},
 	{
 		"name": "Mission",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 4,
+		"description": "Once per turn: If the previous turn wasn&apos;t yours, take another turn after this one, in which you can&apos;t buy cards."
 	},
 	{
 		"name": "Pilgrimage",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 4,
+		"description": "Once per turn: Turn your Journey token over (it starts face up); then if it&apos;s face up, choose up to 3 differently named cards you have in play and gain a copy of each."
 	},
 	{
 		"name": "Ball",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 5,
+		"description": "Take your -1 Coin token. Gain 2 cards each costing up to 4 Coins."
 	},
 	{
 		"name": "Raid",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 5,
+		"description": "Gain a Silver per Silver you have in play. Each other player puts his -1 Card token on his deck."
 	},
 	{
 		"name": "Seaway",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 5,
+		"description": "Gain an Action card costing up to 4 Coins. Move your +1 Buy token to its pile (when you play a card from that pile, you first get +1 Buy)."
 	},
 	{
 		"name": "Trade",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 5,
+		"description": "Trash up to 2 cards from your hand. Gain a Silver per card you trashed."
 	},
 	{
 		"name": "Lost Arts",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 6,
+		"description": "Move your +1 Action token to an Action Supply pile (when you play a card from that pile, you first get +1 Action)."
 	},
 	{
 		"name": "Training",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 6,
+		"description": "Move your +1 Coin token to an Action Supply pile (when you play a card from that pile, you first get +1 Coin)."
 	},
 	{
 		"name": "Inheritance",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 7,
+		"description": "Once per game: Set aside a non-Victory Action card from the Supply costing up to 4 Coins. Move your Estate token to it (your Estates gain the abilities and types of that card)."
 	},
 	{
 		"name": "Pathfinding",
 		"set": "Adventures",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 8,
+		"description": "Move your +1 Card token to an Action Supply pile (when you play a card from that pile, you first get +1 Card)."
 	},
 	{
 		"name": "City Quarter",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 0,
+		"description": "+2 Actions<br>Reveal your hand. +1 Card per Action card revealed."
 	},
 	{
 		"name": "Engineer",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 0,
+		"description": "Gain a card costing up to 4 Coins. You may trash this. If you do, gain a card costing up to 4 Coins."
 	},
 	{
 		"name": "Overlord",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 0,
+		"description": "Play this as if it were an Action card in the Supply costing up to 5 Coins. This is that card until it leaves play."
 	},
 	{
 		"name": "Royal Blacksmith",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 0,
+		"description": "+5 Cards<br>Reveal your hand; discard the Coppers."
 	},
 	{
 		"name": "Encampment/Plunder",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "This pile starts the game with 5 copies of Encampment on top, then 5 copies of Plunder. Only the top card of the pile can be gained or bought."
 	},
 	{
 		"name": "Patrician/Emporium",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "This pile starts the game with 5 copies of Patrician on top, then 5 copies of Emporium. Only the top card of the pile can be gained or bought."
 	},
 	{
 		"name": "Settlers/Bustling Village",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 2,
+		"description": "This pile starts the game with 5 copies of Settlers on top, then 5 copies of Bustling Village. Only the top card of the pile can be gained or bought."
 	},
 	{
 		"name": "Castles",
@@ -5503,7 +6067,9 @@ module.exports = [
 		"type": [
 			"Victory",
 			"Castle"
-		]
+		],
+		"cost": 3,
+		"description": "Sort the castle pile by cost, putting the more expensive Castles on the bottom. For a 2-player game, use only one of each Castle. Only the top card of the pile may be gained or bought."
 	},
 	{
 		"name": "Catapult/Rocks",
@@ -5511,14 +6077,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 3,
+		"description": "This pile starts the game with 5 copies of Catapult on top, then 5 copies of Rocks. Only the top card of the pile can be gained or bought."
 	},
 	{
 		"name": "Chariot Race",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Action<br>"
 	},
 	{
 		"name": "Enchantress",
@@ -5527,7 +6097,9 @@ module.exports = [
 			"Action",
 			"Attack",
 			"Duration"
-		]
+		],
+		"cost": 3,
+		"description": "Until your next turn, the first time each other player plays an Action card on their turn, they get +1 Card and +1 Action instead of following its instructions.<br>At the start of your next turn,<br>+1 Cards"
 	},
 	{
 		"name": "Farmer's Market",
@@ -5535,21 +6107,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Gathering"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Buy<br>If there are 4 Victory or more on the Farmer&apos;s Market Supply pile, take them and trash this. Otherwise, add 1 Victory to the pile and then +1 Coin per 1 Victory on the pile."
 	},
 	{
 		"name": "Gladiator/Fortune",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "This pile starts the game with 5 copies of Gladiator on top, then 5 copies of Fortune. Only the top card of the pile can be gained or bought."
 	},
 	{
 		"name": "Sacrifice",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Trash a card from your hand. If it&apos;s an...<br>Action card, +1 Cards, +2 Actions<br>Treasure card, +2 Coins<br>Victory card, +2 Victory"
 	},
 	{
 		"name": "Temple",
@@ -5557,14 +6135,18 @@ module.exports = [
 		"type": [
 			"Action",
 			"Gathering"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Victory<br>Trash from 1 to 3 differently named cards from your hand. Add 1 Victory to the Temple Supply pile.<hr>When you gain this, take all the Victory from the Temple Supply pile."
 	},
 	{
 		"name": "Villa",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+2 Actions<br>+1 Buy<br>+1 Coin<hr>When you gain this, put it into your hand, +1 Action, and if it&apos;s your Buy phase return to your Action phase."
 	},
 	{
 		"name": "Archive",
@@ -5572,21 +6154,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Duration"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action<br>Set aside the top 3 cards of your deck face down (you may look at them). Now and at the start of your next two turns, put one into your hand."
 	},
 	{
 		"name": "Capital",
 		"set": "Empires",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "6 Coins<br>+1 Buy<hr>When you discard this from play, take 6 Debt, and then you may pay off Debt."
 	},
 	{
 		"name": "Charm",
 		"set": "Empires",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "When you play this, choose one: +1 Buy and +2 Coins; or the next time you buy a card this turn, you may also gain a differently named card with the same cost."
 	},
 	{
 		"name": "Crown",
@@ -5594,21 +6182,27 @@ module.exports = [
 		"type": [
 			"Action",
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "If it&apos;s your Action phase, you may play an Action from your hand twice. If it&apos;s your Buy phase, you may play a Treasure from your hand twice."
 	},
 	{
 		"name": "Forum",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<br>Discard 2 cards.<hr>When you buy this, +1 Buy."
 	},
 	{
 		"name": "Groundskeeper",
 		"set": "Empires",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<hr>While this is in play, when you gain a Victory card, +1 Victory."
 	},
 	{
 		"name": "Legionary",
@@ -5616,7 +6210,9 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "+3 Coins<br>You may reveal a Gold from your hand. If you do, each other player discards down to 2 cards in hand, then draws a card."
 	},
 	{
 		"name": "Wild Hunt",
@@ -5624,273 +6220,351 @@ module.exports = [
 		"type": [
 			"Action",
 			"Gathering"
-		]
+		],
+		"cost": 5,
+		"description": "Choose one: +3 Cards and add 1 Victory to the Wild Hunt Supply pile; or gain an Estate, and if you do, take the Victory from the pile."
 	},
 	{
 		"name": "Advance",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "You may trash an Action card from your hand. If you do, gain an Action card costing up to 6 Coins."
 	},
 	{
 		"name": "Annex",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "Look through your discard pile. Shuffle all but up to 5 cards from it into your deck. Gain a Duchy."
 	},
 	{
 		"name": "Donate",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "After this turn, put all cards from your deck and discard pile into your hand, trash any number, shuffle your hand into your deck, then draw 5 cards."
 	},
 	{
 		"name": "Triumph",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 0,
+		"description": "Gain an Estate.BBIf you did, +1 Victory per card you&apos;ve gained this turn."
 	},
 	{
 		"name": "Delve",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 2,
+		"description": "+1 BuyBBGain a Silver."
 	},
 	{
 		"name": "Tax",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 2,
+		"description": "Add 2 Debt to a Supply pile.HHSetup: Add 1 Debt to each Supply pile. When a player buys a card, they take the Debt from its pile."
 	},
 	{
 		"name": "Banquet",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 3,
+		"description": "Gain 2 Coppers and a non-Victory card costing up to 5 Coins."
 	},
 	{
 		"name": "Ritual",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 4,
+		"description": "Gain a Curse. If you do, trash a card from your hand. +1 Victory per 1 Coin it cost."
 	},
 	{
 		"name": "Salt the Earth",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 4,
+		"description": "+1 VictoryBBTrash a Victory card from the Supply."
 	},
 	{
 		"name": "Wedding",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 4,
+		"description": "+1 VictoryBBGain a Gold."
 	},
 	{
 		"name": "Windfall",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 5,
+		"description": "If your deck and discard pile are empty, gain 3 Golds."
 	},
 	{
 		"name": "Conquest",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 6,
+		"description": "Gain 2 Silvers.<br>+1 Victory per Silver you&apos;ve gained this turn."
 	},
 	{
 		"name": "Dominate",
 		"set": "Empires",
 		"type": [
 			"Event"
-		]
+		],
+		"cost": 14,
+		"description": "Gain a Province. If you do, +9 Victory"
 	},
 	{
 		"name": "Aqueduct",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you gain a Treasure, move 1 Victory from its pile to this.BBWhen you gain a Victory card, take the Victory from this.HHSetup: Put 8 Victory on the Silver and Gold piles."
 	},
 	{
 		"name": "Arena",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "At the start of your Buy phase, you may discard an Action card. If you do, take 2 Victory from here.HHSetup: Put 6 Victory here per player."
 	},
 	{
 		"name": "Bandit Fort",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, -2 Victory for each Silver and each Gold you have."
 	},
 	{
 		"name": "Basilica",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you buy a card, if you have 2 Coins or more left, take 2 Victory from here.HHSetup: Plus 6 Victory here per player."
 	},
 	{
 		"name": "Baths",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you end your turn without having gained a card, take 2 Victory from here.HHSetup: Put 6 Victory here per player."
 	},
 	{
 		"name": "Battlefield",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you gain a Victory card, take 2 Victory from here.HHSetup: Put 6 Victory here per player."
 	},
 	{
 		"name": "Colonnade",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you buy an Action card, if you have a copy of it in play, take 2 Victory from here.HHSetup: Put 6 Victory here per player."
 	},
 	{
 		"name": "Defiled Shrine",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you gain an Action, move 1 Victory from its pile to this. When you buy a Curse, take the Victory from this.HHSetup: Put 2 Victory on each non-Gathering Action Supply pile."
 	},
 	{
 		"name": "Fountain",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 15 Victory if you have at least 10 Coppers."
 	},
 	{
 		"name": "Keep",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 5 Victory per differently named Treasure you have, that you have more copies of than each other player, or tied for most."
 	},
 	{
 		"name": "Labyrinth",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you gain a 2nd card in one of your turns, take 2 Victory from here.HHSetup: Put 6 Victory here per player."
 	},
 	{
 		"name": "Mountain Pass",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you are the first player to gain a Province, after that turn, each player bids once, up to 40 Debt, ending with you. High bidder gets +8 Victory and takes the Debt they bid."
 	},
 	{
 		"name": "Museum",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 2 Victory per differently named card you have."
 	},
 	{
 		"name": "Obelisk",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 2 Victory per card you have from the chosen pile.HHSetup: Choose a random Action Supply pile."
 	},
 	{
 		"name": "Orchard",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 4 Victory per differently named Action card you have 3 or more copies of."
 	},
 	{
 		"name": "Palace",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 3 Victory per set you have of Copper - Silver - Gold."
 	},
 	{
 		"name": "Tomb",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When you trash a card, +1 Victory."
 	},
 	{
 		"name": "Tower",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 1 Victory per non-Victory card you have from an empty Supply pile."
 	},
 	{
 		"name": "Triumphal Arch",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, 3 Victory per copy you have of the 2nd most common Action card among your cards (if it&apos;s a tie, count either)."
 	},
 	{
 		"name": "Wall",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, -1 Victory per card you have after the first 15."
 	},
 	{
 		"name": "Wolf Den",
 		"set": "Empires",
 		"type": [
 			"Landmark"
-		]
+		],
+		"cost": 0,
+		"description": "When scoring, -3 Victory per card you have exactly one copy of."
 	},
 	{
 		"name": "Harbinger",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card<br>+1 Action<br>Look through your discard pile. You may put a card from it onto your deck."
 	},
 	{
 		"name": "Merchant",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+1 Card<br>+1 Action<br>The first tim eyou play a Silver this turn, +1 Coin."
 	},
 	{
 		"name": "Vassal",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Coins<br>Discard the top card of your deck. If it&apos;s an Action card, you may play it."
 	},
 	{
 		"name": "Poacher",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+1 Action<br>+1 Coin<br>Discard a card per empty Supply pile."
 	},
 	{
 		"name": "Bandit",
@@ -5898,182 +6572,299 @@ module.exports = [
 		"type": [
 			"Action",
 			"Attack"
-		]
+		],
+		"cost": 5,
+		"description": "Gain a Gold. Each other player reveals the top 2 cards of their deck, trashes a revealed Treasure other than Copper, and discards the rest."
 	},
 	{
 		"name": "Sentry",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Card<br>+1 Action<br>Look at the top 2 cards of your deck. Trash and/or discard any number of them. Put the rest back on top in any order."
 	},
 	{
 		"name": "Artisan",
 		"set": "Base",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 6,
+		"description": "Gain a card to your hand costing up to 5 Coins.<br>Put a card from yoru hand onto your deck."
 	},
 	{
 		"name": "Black Market",
 		"set": "Promo",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 3,
+		"description": "+2 Coins, Reveal the top 3 cards of the Black Market deck. You may buy one of them immediately. Put the unbought cards on the bottom of the Black Market deck in any order. <br><i>(Before the game, make a Black Market deck out of one copy of each Kingdom card not in the supply.)</i>."
 	},
 	{
 		"name": "Envoy",
 		"set": "Promo",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "Reveal the top 5 cards of your deck. The player to your left chooses one for you to discard. Draw the rest."
 	},
 	{
 		"name": "Walled Village",
 		"set": "Promo",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 4,
+		"description": "+1 Card<br>+2 Actions<hr>At the start of Clean-up, if you have this and no more than one other Action card in play, you may put this on top of your deck."
 	},
 	{
 		"name": "Governor",
 		"set": "Promo",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 5,
+		"description": "+1 Action<br><br>Choose one; you get the version in parentheses: Each player gets +1 (+3) Cards; or each player gains a Silver (Gold); or each player may trash a card from his hand and gain a card costing exactly 1 Coin (2 Coins) more."
 	},
 	{
 		"name": "Stash",
 		"set": "Promo",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 5,
+		"description": "Worth 2 Coins. When you shuffle, you may put this anywhere in your deck."
 	},
 	{
 		"name": "Prince",
 		"set": "Promo",
 		"type": [
 			"Action"
-		]
+		],
+		"cost": 8,
+		"description": "You may set this aside. If you do, set aside an Action card from your hand costing up to 4 coins. At the start of each of your turns, play that Action, setting it aside again when you discard it from play. (Stop playing it if you fail to set it aside on a turn you play it.)"
 	},
 	{
 		"name": "Copper",
 		"set": "Base Cards",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 0,
+		"description": "1 Coin"
 	},
 	{
 		"name": "Curse",
 		"set": "Base Cards",
 		"type": [
 			"Curse"
-		]
+		],
+		"cost": 0,
+		"description": "-1 Victory"
 	},
 	{
 		"name": "Estate",
 		"set": "Base Cards",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 2,
+		"description": "1 Victory"
 	},
 	{
 		"name": "Silver",
 		"set": "Base Cards",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 3,
+		"description": "2 Coins"
 	},
 	{
 		"name": "Potion",
 		"set": "Base Cards",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 4,
+		"description": "1 Potion"
 	},
 	{
 		"name": "Duchy",
 		"set": "Base Cards",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 5,
+		"description": "3 Victory"
 	},
 	{
 		"name": "Gold",
 		"set": "Base Cards",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 6,
+		"description": "3 Coins"
 	},
 	{
 		"name": "Province",
 		"set": "Base Cards",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 8,
+		"description": "6 Victory"
 	},
 	{
 		"name": "Platinum",
 		"set": "Base Cards",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 9,
+		"description": "5 Coins"
 	},
 	{
 		"name": "Colony",
 		"set": "Base Cards",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 11,
+		"description": "10 Victory"
 	},
 	{
 		"name": "Copper",
 		"set": "Common",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 0,
+		"description": "1 Coin."
 	},
 	{
 		"name": "Curse",
 		"set": "Common",
 		"type": [
 			"Curse"
-		]
+		],
+		"cost": 0,
+		"description": "-1 Victory."
 	},
 	{
 		"name": "Estate",
 		"set": "Common",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 2,
+		"description": "1 Victory."
 	},
 	{
 		"name": "Silver",
 		"set": "Common",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 3,
+		"description": "2 Coins."
 	},
 	{
 		"name": "Duchy",
 		"set": "Common",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 5,
+		"description": "3 Victory."
 	},
 	{
 		"name": "Gold",
 		"set": "Common",
 		"type": [
 			"Treasure"
-		]
+		],
+		"cost": 6,
+		"description": "3 Coins."
 	},
 	{
 		"name": "Province",
 		"set": "Common",
 		"type": [
 			"Victory"
-		]
+		],
+		"cost": 8,
+		"description": "6 Victory."
+	},
+	{
+		"name": "Lurker",
+		"type": [
+			"Action"
+		],
+		"cost": 2,
+		"description": "+1 Action<br>Choose one: Trash an Action card from the Supply, or gain an Action card from the trash.",
+		"set": "Intrigue"
+	},
+	{
+		"name": "Diplomat",
+		"type": [
+			"Action",
+			"Reaction"
+		],
+		"cost": 4,
+		"description": "+2 Cards<br>If you have 5 or fewer cards in hand (after drawing), +2 Actions.<br><hr class=\"border-bottom\"><br>When another player plays an Attack card, you may first reveal this from a hand of 5 or more cards, to draw 2 cards then discard 3.",
+		"set": "Intrigue"
+	},
+	{
+		"name": "Mill",
+		"type": [
+			"Action",
+			"Victory"
+		],
+		"cost": 4,
+		"description": "+1 Card, +1 Action.<br>You may discard 2 cards, for +2.",
+		"set": "Intrigue"
+	},
+	{
+		"name": "Secret Passage",
+		"type": [
+			"Action"
+		],
+		"cost": 4,
+		"description": "+2 Cards +1 Action<br>Take a card from your hand and put it anywhere in your deck.",
+		"set": "Intrigue"
+	},
+	{
+		"name": "Courtier",
+		"type": [
+			"Action"
+		],
+		"cost": 5,
+		"description": "Reveal a card from your hand. For each type it has (Action, Attack, etc.), choose one: +1 Action; or +1 Buy; or +Coin3.png; or gain a Gold. The choices must be different.",
+		"set": "Intrigue"
+	},
+	{
+		"name": "Patrol",
+		"type": [
+			"Action"
+		],
+		"cost": 5,
+		"description": "+3 Cards. Reveal the top 4 cards of your deck. Put the Victory cards and Curses into your hand. Put the rest back in any order.",
+		"set": "Intrigue"
+	},
+	{
+		"name": "Replace",
+		"type": [
+			"Action"
+		],
+		"cost": 5,
+		"description": "Trash a card from your hand. Gain a card costing up to Coin2.png more than it. If the gained card is an Action or Treasure, put it onto your deck; if it's a Victory card, each other player gains a Curse.",
+		"set": "Intrigue"
 	}
 ];
 

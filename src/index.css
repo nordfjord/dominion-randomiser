@@ -1,0 +1,40 @@
+tr.Victory {
+  background: #83C084;
+}
+
+tr.Reaction {
+  background: #77abe2;
+}
+
+tr.Treasure {
+  background: #E7D68B;
+}
+
+tr.Action.Victory {
+  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(131,192,132,1) 100%);
+}
+
+tr.Treasure.Victory {
+  background: linear-gradient(to bottom, #E7D68B 0%, #83C084 100%);
+}
+
+tr.Action.Treasure {
+  background: linear-gradient(to bottom, #fff 0%, #E7D68B 100%)
+}
+
+th {
+  text-align: left;
+}
+
+th.cost {
+  text-align: right;
+}
+
+td.cost {
+  text-align: right;
+}
+
+table {
+  max-width: 1200px;
+  border-collapse: collapse;
+}

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "ace-css": "^1.1.0",
+    "basscss-base-tables": "^1.0.2",
     "flyd": "^0.2.4",
     "mithril": "^1.1.1",
     "style-loader": "^0.18.2"
