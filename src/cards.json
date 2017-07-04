@@ -1,0 +1,2712 @@
+[
+  {
+    "name": "Cellar",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Chapel",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Moat",
+    "set": "Base",
+    "type": [
+      "Action",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Village",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Workshop",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Bureaucrat",
+    "set": "Base",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Gardens",
+    "set": "Base",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Militia",
+    "set": "Base",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Moneylender",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Remodel",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Smithy",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Throne Room",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Council Room",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Festival",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Laboratory",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Library",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Market",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mine",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Witch",
+    "set": "Base",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Courtyard",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Pawn",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Secret Chamber",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Great Hall",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Victory"
+    ]
+  },
+  {
+    "name": "Masquerade",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Shanty Town",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Steward",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Swindler",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Wishing Well",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Baron",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Bridge",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Conspirator",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Coppersmith",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Ironworks",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mining Village",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Scout",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Duke",
+    "set": "Intrigue",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Minion",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Saboteur",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Torturer",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Trading Post",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Tribute",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Upgrade",
+    "set": "Intrigue",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Harem",
+    "set": "Intrigue",
+    "type": [
+      "Treasure",
+      "Victory"
+    ]
+  },
+  {
+    "name": "Nobles",
+    "set": "Intrigue",
+    "type": [
+      "Action",
+      "Victory"
+    ]
+  },
+  {
+    "name": "Embargo",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Haven",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Lighthouse",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Native Village",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Pearl Diver",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Ambassador",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Fishing Village",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Lookout",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Smugglers",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Warehouse",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Caravan",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Cutpurse",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Island",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Victory"
+    ]
+  },
+  {
+    "name": "Navigator",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Pirate Ship",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Salvager",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Sea Hag",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Treasure Map",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Bazaar",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Explorer",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Ghost Ship",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Merchant Ship",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Outpost",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Tactician",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Treasury",
+    "set": "Seaside",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Wharf",
+    "set": "Seaside",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Transmute",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Vineyard",
+    "set": "Alchemy",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Apothecary",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Herbalist",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Scrying Pool",
+    "set": "Alchemy",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "University",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Alchemist",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Familiar",
+    "set": "Alchemy",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Philosopher's Stone",
+    "set": "Alchemy",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Golem",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Potion",
+    "set": "Alchemy",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Apprentice",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Possession",
+    "set": "Alchemy",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Loan",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Trade Route",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Watchtower",
+    "set": "Prosperity",
+    "type": [
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Bishop",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Monument",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Quarry",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Talisman",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Worker's Village",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "City",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Contraband",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Counting House",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mint",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mountebank",
+    "set": "Prosperity",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Rabble",
+    "set": "Prosperity",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Royal Seal",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Vault",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Venture",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Goons",
+    "set": "Prosperity",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Grand Market",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Hoard",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Bank",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Expand",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Forge",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "King's Court",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Peddler",
+    "set": "Prosperity",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Platinum",
+    "set": "Prosperity",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Colony",
+    "set": "Prosperity",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Bag of Gold",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Prize"
+    ]
+  },
+  {
+    "name": "Diadem",
+    "set": "Cornucopia",
+    "type": [
+      "Treasure",
+      "Prize"
+    ]
+  },
+  {
+    "name": "Followers",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Attack",
+      "Prize"
+    ]
+  },
+  {
+    "name": "Princess",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Prize"
+    ]
+  },
+  {
+    "name": "Trusty Steed",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Prize"
+    ]
+  },
+  {
+    "name": "Hamlet",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Fortune Teller",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Menagerie",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Farming Village",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Horse Traders",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Remake",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Tournament",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Young Witch",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Harvest",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Horn of Plenty",
+    "set": "Cornucopia",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Hunting Party",
+    "set": "Cornucopia",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Jester",
+    "set": "Cornucopia",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Fairgrounds",
+    "set": "Cornucopia",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Crossroads",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Duchess",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Fool's Gold",
+    "set": "Hinterlands",
+    "type": [
+      "Treasure",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Develop",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Oasis",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Oracle",
+    "set": "Hinterlands",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Scheme",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Tunnel",
+    "set": "Hinterlands",
+    "type": [
+      "Victory",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Jack of all Trades",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Noble Brigand",
+    "set": "Hinterlands",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Nomad Camp",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Silk Road",
+    "set": "Hinterlands",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Spice Merchant",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Trader",
+    "set": "Hinterlands",
+    "type": [
+      "Action",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Cache",
+    "set": "Hinterlands",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Cartographer",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Embassy",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Haggler",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Highway",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Ill-Gotten Gains",
+    "set": "Hinterlands",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Inn",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mandarin",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Margrave",
+    "set": "Hinterlands",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Stables",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Border Village",
+    "set": "Hinterlands",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Farmland",
+    "set": "Hinterlands",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Abandoned Mine",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Ruins"
+    ]
+  },
+  {
+    "name": "Madman",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mercenary",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Ruined Library",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Ruins"
+    ]
+  },
+  {
+    "name": "Ruined Market",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Ruins"
+    ]
+  },
+  {
+    "name": "Ruined Village",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Ruins"
+    ]
+  },
+  {
+    "name": "Spoils",
+    "set": "Dark Ages",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Survivors",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Ruins"
+    ]
+  },
+  {
+    "name": "Hovel",
+    "set": "Dark Ages",
+    "type": [
+      "Reaction",
+      "Shelter"
+    ]
+  },
+  {
+    "name": "Necropolis",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Shelter"
+    ]
+  },
+  {
+    "name": "Overgrown Estate",
+    "set": "Dark Ages",
+    "type": [
+      "Victory",
+      "Shelter"
+    ]
+  },
+  {
+    "name": "Poor House",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Beggar",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Squire",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Vagrant",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Forager",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Hermit",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Market Square",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Sage",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Storeroom",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Urchin",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Armory",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Death Cart",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Looter"
+    ]
+  },
+  {
+    "name": "Feodum",
+    "set": "Dark Ages",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Fortress",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Ironmonger",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Marauder",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Looter"
+    ]
+  },
+  {
+    "name": "Procession",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Rats",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Scavenger",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Sir Martin",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Wandering Minstrel",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Band of Misfits",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Bandit Camp",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Catacombs",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Count",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Counterfeit",
+    "set": "Dark Ages",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Cultist",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Looter"
+    ]
+  },
+  {
+    "name": "Dame Anna",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Dame Josephine",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight",
+      "Victory"
+    ]
+  },
+  {
+    "name": "Dame Molly",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Dame Natalie",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Dame Sylvia",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Graverobber",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Junk Dealer",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Mystic",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Pillage",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Rebuild",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Rogue",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Sir Bailey",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Sir Destry",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Sir Michael",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Sir Vander",
+    "set": "Dark Ages",
+    "type": [
+      "Action",
+      "Attack",
+      "Knight"
+    ]
+  },
+  {
+    "name": "Altar",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Hunting Grounds",
+    "set": "Dark Ages",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Candlestick Maker",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Stonemason",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Doctor",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Masterpiece",
+    "set": "Guilds",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Advisor",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Herald",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Plaza",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Taxman",
+    "set": "Guilds",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Baker",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Butcher",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Journeyman",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Merchant Guild",
+    "set": "Guilds",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Soothsayer",
+    "set": "Guilds",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Coin of the Realm",
+    "set": "Adventures",
+    "type": [
+      "Treasure",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Page",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Peasant",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Ratcatcher",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Raze",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Amulet",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Caravan Guard",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration",
+      "Reaction"
+    ]
+  },
+  {
+    "name": "Dungeon",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Gear",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Guide",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Duplicate",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Magpie",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Messenger",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Miser",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Port",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Ranger",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Transmogrify",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Artificer",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Bridge Troll",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Distant Lands",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve",
+      "Victory"
+    ]
+  },
+  {
+    "name": "Giant",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Haunted Woods",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Attack",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Lost City",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Relic",
+    "set": "Adventures",
+    "type": [
+      "Treasure",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Royal Carriage",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Storyteller",
+    "set": "Adventures",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Swamp Hag",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Attack",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Treasure Trove",
+    "set": "Adventures",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Wine Merchant",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Hireling",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Soldier",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Attack",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Fugitive",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Disciple",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Teacher",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Reserve"
+    ]
+  },
+  {
+    "name": "Treasure Hunter",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Warrior",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Attack",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Hero",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Traveller"
+    ]
+  },
+  {
+    "name": "Champion",
+    "set": "Adventures",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Alms",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Borrow",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Quest",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Save",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Scouting Party",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Travelling Fair",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Bonfire",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Expedition",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Ferry",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Plan",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Mission",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Pilgrimage",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Ball",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Raid",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Seaway",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Trade",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Lost Arts",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Training",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Inheritance",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Pathfinding",
+    "set": "Adventures",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "City Quarter",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Engineer",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Overlord",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Royal Blacksmith",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Encampment/Plunder",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Patrician/Emporium",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Settlers/Bustling Village",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Castles",
+    "set": "Empires",
+    "type": [
+      "Victory",
+      "Castle"
+    ]
+  },
+  {
+    "name": "Catapult/Rocks",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Chariot Race",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Enchantress",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Attack",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Farmer's Market",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Gathering"
+    ]
+  },
+  {
+    "name": "Gladiator/Fortune",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Sacrifice",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Temple",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Gathering"
+    ]
+  },
+  {
+    "name": "Villa",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Archive",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Duration"
+    ]
+  },
+  {
+    "name": "Capital",
+    "set": "Empires",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Charm",
+    "set": "Empires",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Crown",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Forum",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Groundskeeper",
+    "set": "Empires",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Legionary",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Wild Hunt",
+    "set": "Empires",
+    "type": [
+      "Action",
+      "Gathering"
+    ]
+  },
+  {
+    "name": "Advance",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Annex",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Donate",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Triumph",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Delve",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Tax",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Banquet",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Ritual",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Salt the Earth",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Wedding",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Windfall",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Conquest",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Dominate",
+    "set": "Empires",
+    "type": [
+      "Event"
+    ]
+  },
+  {
+    "name": "Aqueduct",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Arena",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Bandit Fort",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Basilica",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Baths",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Battlefield",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Colonnade",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Defiled Shrine",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Fountain",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Keep",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Labyrinth",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Mountain Pass",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Museum",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Obelisk",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Orchard",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Palace",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Tomb",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Tower",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Triumphal Arch",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Wall",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Wolf Den",
+    "set": "Empires",
+    "type": [
+      "Landmark"
+    ]
+  },
+  {
+    "name": "Harbinger",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Merchant",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Vassal",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Poacher",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Bandit",
+    "set": "Base",
+    "type": [
+      "Action",
+      "Attack"
+    ]
+  },
+  {
+    "name": "Sentry",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Artisan",
+    "set": "Base",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Black Market",
+    "set": "Promo",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Envoy",
+    "set": "Promo",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Walled Village",
+    "set": "Promo",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Governor",
+    "set": "Promo",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Stash",
+    "set": "Promo",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Prince",
+    "set": "Promo",
+    "type": [
+      "Action"
+    ]
+  },
+  {
+    "name": "Copper",
+    "set": "Base Cards",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Curse",
+    "set": "Base Cards",
+    "type": [
+      "Curse"
+    ]
+  },
+  {
+    "name": "Estate",
+    "set": "Base Cards",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Silver",
+    "set": "Base Cards",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Potion",
+    "set": "Base Cards",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Duchy",
+    "set": "Base Cards",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Gold",
+    "set": "Base Cards",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Province",
+    "set": "Base Cards",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Platinum",
+    "set": "Base Cards",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Colony",
+    "set": "Base Cards",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Copper",
+    "set": "Common",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Curse",
+    "set": "Common",
+    "type": [
+      "Curse"
+    ]
+  },
+  {
+    "name": "Estate",
+    "set": "Common",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Silver",
+    "set": "Common",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Duchy",
+    "set": "Common",
+    "type": [
+      "Victory"
+    ]
+  },
+  {
+    "name": "Gold",
+    "set": "Common",
+    "type": [
+      "Treasure"
+    ]
+  },
+  {
+    "name": "Province",
+    "set": "Common",
+    "type": [
+      "Victory"
+    ]
+  }
+]
