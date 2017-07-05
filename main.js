@@ -697,8 +697,8 @@ var MainFilters = {
 
 var Filters = {
 	view: function view() {
-		return m('.flex.items-center.justify-center.flex-wrap', [expansions.map(function (set) {
-			return m('', m('label', [set, m('input[type=checkbox]', {
+		return m('.flex.items-center.justify-center', m('.filters.flex.items-center.justify-center.flex-wrap', [expansions.map(function (set) {
+			return m('', m('label.p1', [set, m('input[type=checkbox]', {
 				checked: !!~filtered_expansions().indexOf(set),
 				onchange: m.withAttr('checked', function (checked) {
 					if (checked) {
@@ -710,7 +710,7 @@ var Filters = {
 					}
 				})
 			})]));
-		})]);
+		})]));
 	}
 };
 
@@ -3406,7 +3406,7 @@ exports = module.exports = __webpack_require__(4)(undefined);
 
 
 // module
-exports.push([module.i, "tr.Victory {\n  background: #83C084;\n}\n\ntr.Reaction {\n  background: #77abe2;\n}\n\ntr.Treasure {\n  background: #E7D68B;\n}\n\ntr.Action.Victory {\n  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(131,192,132,1) 100%);\n}\n\ntr.Treasure.Victory {\n  background: linear-gradient(to bottom, #E7D68B 0%, #83C084 100%);\n}\n\ntr.Action.Treasure {\n  background: linear-gradient(to bottom, #fff 0%, #E7D68B 100%)\n}\n\nth {\n  text-align: left;\n}\n\nth.cost {\n  text-align: right;\n}\n\ntd.cost {\n  text-align: right;\n}\n\ntable {\n  max-width: 1200px;\n  border-collapse: collapse;\n}\n", ""]);
+exports.push([module.i, "body {\n  font-family: 'Lato', sans-serif;\n}\n\ntr.Victory {\n  background: #83C084;\n}\n\ntr.Reaction {\n  background: #77abe2;\n}\n\ntr.Treasure {\n  background: #E7D68B;\n}\n\ntr.Action.Victory {\n  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(131,192,132,1) 100%);\n}\n\ntr.Treasure.Victory {\n  background: linear-gradient(to bottom, #E7D68B 0%, #83C084 100%);\n}\n\ntr.Action.Treasure {\n  background: linear-gradient(to bottom, #fff 0%, #E7D68B 100%)\n}\n\nth {\n  text-align: left;\n}\n\nth.cost {\n  text-align: right;\n}\n\ntd.cost {\n  text-align: right;\n}\n\n.filters {\n    max-width: 480px;\n}\n\ntable {\n  max-width: 1200px;\n  border-collapse: collapse;\n}\n\n.container {\n  max-width: 580px;\n  margin-left: auto;\n  margin-right: auto;\n}\n", ""]);
 
 // exports
 

@@ -1,3 +1,7 @@
+body {
+  font-family: 'Lato', sans-serif;
+}
+
 tr.Victory {
   background: #83C084;
 }
@@ -34,7 +38,17 @@ td.cost {
   text-align: right;
 }
 
+.filters {
+    max-width: 480px;
+}
+
 table {
   max-width: 1200px;
   border-collapse: collapse;
+}
+
+.container {
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
 }

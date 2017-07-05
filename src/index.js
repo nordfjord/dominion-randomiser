@@ -52,11 +52,11 @@ const MainFilters = {
 
 const Filters = {
 	view() {
-		return m('.flex.items-center.justify-center.flex-wrap', [
+		return m('.flex.items-center.justify-center', m('.filters.flex.items-center.justify-center.flex-wrap', [
 			expansions.map(set =>
 				m(
 					'',
-					m('label', [
+					m('label.p1', [
 						set,
 						m('input[type=checkbox]', {
 							checked: !!~filtered_expansions().indexOf(set),
@@ -71,7 +71,7 @@ const Filters = {
 					])
 				)
 			),
-		]);
+		]));
 	},
 };
 
